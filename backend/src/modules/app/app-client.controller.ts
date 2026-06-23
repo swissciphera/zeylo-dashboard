@@ -36,11 +36,7 @@ import {
   AssignEmployeeDto,
   TempAccessDto,
 } from './projects.service';
-import {
-  ContactsService,
-  CreateContactDto,
-  UpdateContactDto,
-} from './contacts.service';
+import { ContactsService, ContactDto } from './contacts.service';
 import { SubscriptionService } from './subscription.service';
 
 // All tenant endpoints live under /api/app and are scoped to the caller's company.
@@ -259,11 +255,13 @@ export class AppClientController {
     return this.contacts.list(companyId, type);
   }
 
+  @Get('contacts/:id')
+  getContact(@CurrentCompany() companyId: string, @Param('id') id: string) {
+    return this.contacts.detail(companyId, id);
+  }
+
   @Post('contacts')
-  createContact(
-    @CurrentCompany() companyId: string,
-    @Body() dto: CreateContactDto,
-  ) {
+  createContact(@CurrentCompany() companyId: string, @Body() dto: ContactDto) {
     return this.contacts.create(companyId, dto);
   }
 
@@ -271,7 +269,7 @@ export class AppClientController {
   updateContact(
     @CurrentCompany() companyId: string,
     @Param('id') id: string,
-    @Body() dto: UpdateContactDto,
+    @Body() dto: ContactDto,
   ) {
     return this.contacts.update(companyId, id, dto);
   }

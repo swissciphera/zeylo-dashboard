@@ -58,35 +58,28 @@ export class CompanyVerificationService {
     return { company, data };
   }
 
-  // Save a verified company as a CONTACT of the caller's company.
+  // Save a verified company as an ENTERPRISE contact of the caller's company.
   async saveToContact(companyId: string, url: string) {
     const data = await this.scraper.details(url);
     const addr = data.address || {};
-    const addressLine = [
-      addr.complement,
-      addr.street,
-      [addr.postal_code, addr.city].filter(Boolean).join(' '),
-    ]
-      .filter(Boolean)
-      .join(', ');
     const ri = data.registry_info || {};
-    const notes = [
-      ri.ide ? `IDE : ${ri.ide}` : null,
-      ri.tva ? `TVA : ${ri.tva}` : null,
-      ri.legal_form ? `Forme : ${ri.legal_form}` : null,
-      addressLine ? `Adresse : ${addressLine}` : null,
-      data.sourceUrl ? `Registre : ${data.sourceUrl}` : null,
-    ]
-      .filter(Boolean)
-      .join('\n');
-
     const contact = await this.prisma.contact.create({
       data: {
         companyId,
         type: 'PROSPECT',
+        kind: 'ENTERPRISE',
         source: 'MANUAL',
         name: data.company_name || 'Entreprise',
-        notes: notes || null,
+        companyName: data.company_name || null,
+        street: addr.street || null,
+        streetNumber: addr.streetNumber || null,
+        postalCode: addr.postal_code || null,
+        city: addr.city || null,
+        canton: addr.canton || null,
+        country: addr.country || null,
+        ideNumber: ri.ide || null,
+        vatNumber: ri.tva || null,
+        registryData: data,
       },
     });
     return { contact };

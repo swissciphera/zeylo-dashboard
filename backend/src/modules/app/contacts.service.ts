@@ -1,17 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
-import { ContactType } from '@prisma/client';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ContactKind, ContactType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export class CreateContactDto {
-  @IsString() @MinLength(1) name!: string;
+export class ContactDto {
   @IsEnum(ContactType) type!: ContactType;
+  @IsEnum(ContactKind) kind!: ContactKind;
+  @IsOptional() @IsString() firstName?: string;
+  @IsOptional() @IsString() lastName?: string;
+  @IsOptional() @IsString() companyName?: string;
   @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() street?: string;
+  @IsOptional() @IsString() streetNumber?: string;
+  @IsOptional() @IsString() postalCode?: string;
+  @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() canton?: string;
+  @IsOptional() @IsString() country?: string;
+  @IsOptional() @IsString() ideNumber?: string;
+  @IsOptional() @IsString() vatNumber?: string;
+  @IsOptional() @IsString() photoFileId?: string;
   @IsOptional() @IsString() notes?: string;
 }
-
-export class UpdateContactDto extends CreateContactDto {}
 
 @Injectable()
 export class ContactsService {
@@ -24,15 +34,30 @@ export class ContactsService {
     });
   }
 
-  create(companyId: string, dto: CreateContactDto) {
+  detail(companyId: string, id: string) {
+    return this.ensureOwned(companyId, id);
+  }
+
+  private displayName(dto: ContactDto): string {
+    if (dto.kind === 'ENTERPRISE') {
+      return dto.companyName?.trim() || 'Entreprise';
+    }
+    const full = `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim();
+    return full || 'Contact';
+  }
+
+  create(companyId: string, dto: ContactDto) {
     return this.prisma.contact.create({
-      data: { companyId, source: 'MANUAL', ...dto },
+      data: { companyId, source: 'MANUAL', name: this.displayName(dto), ...dto },
     });
   }
 
-  async update(companyId: string, id: string, dto: UpdateContactDto) {
+  async update(companyId: string, id: string, dto: ContactDto) {
     await this.ensureOwned(companyId, id);
-    return this.prisma.contact.update({ where: { id }, data: { ...dto } });
+    return this.prisma.contact.update({
+      where: { id },
+      data: { name: this.displayName(dto), ...dto },
+    });
   }
 
   async remove(companyId: string, id: string) {
@@ -44,8 +69,8 @@ export class ContactsService {
   private async ensureOwned(companyId: string, id: string) {
     const found = await this.prisma.contact.findFirst({
       where: { id, companyId },
-      select: { id: true },
     });
     if (!found) throw new NotFoundException('Contact introuvable.');
+    return found;
   }
 }

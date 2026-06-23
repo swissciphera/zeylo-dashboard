@@ -317,6 +317,32 @@ export class CompanyScraperService {
       ? `https://www.uid.admin.ch/Detail.aspx?uid_id=${cleanIde}`
       : null;
 
+    // Split "Avenue d'Aïre 7" -> street + number.
+    let streetNumber: string | null = null;
+    if (street) {
+      const m = street.match(/^(.*?)[\s,]+(\d+\s?[a-zA-Z]?)$/);
+      if (m) {
+        street = m[1].trim();
+        streetNumber = m[2].replace(/\s/g, '');
+      }
+    }
+    let canton: string | null = null;
+    let country: string | null = 'Suisse';
+    // Enrich canton/country (+ fill address gaps) from the official UID registry.
+    if (cleanIde) {
+      try {
+        const uid = await this.fetchUidDetails(cleanIde);
+        canton = uid.canton ?? canton;
+        if (uid.country) country = uid.country;
+        if (!street && uid.street) street = uid.street;
+        if (!streetNumber && uid.streetNumber) streetNumber = uid.streetNumber;
+        if (!postal_code && uid.postalCode) postal_code = uid.postalCode;
+        if (!city && uid.city) city = uid.city;
+      } catch {
+        /* best effort */
+      }
+    }
+
     return {
       sourceUrl,
       company_name,
@@ -324,7 +350,7 @@ export class CompanyScraperService {
       registry_number,
       sector,
       purpose,
-      address: { complement, street, postal_code, city },
+      address: { complement, street, streetNumber, postal_code, city, canton, country },
       registry_info: {
         registration_date,
         legal_form,
@@ -339,19 +365,71 @@ export class CompanyScraperService {
     };
   }
 
-  // ── uid.admin.ch (IDE registry) ─────────────────────────────
-  async ide(uid: string): Promise<Record<string, any>> {
-    this.assertProxy();
-    const clean = (uid || '').trim();
-    if (!clean) throw new BadRequestException('IDE manquant.');
-    const url = `https://www.uid.admin.ch/Detail.aspx?uid_id=${encodeURIComponent(clean)}&lang=fr`;
+  // ── uid.admin.ch (official IDE registry) ────────────────────
+  // Extracts canton/country + structured address by matching field labels.
+  private async fetchUidDetails(ide: string): Promise<{
+    canton: string | null;
+    country: string | null;
+    street: string | null;
+    streetNumber: string | null;
+    postalCode: string | null;
+    city: string | null;
+  }> {
+    const url = `https://www.uid.admin.ch/Detail.aspx?uid_id=${encodeURIComponent(ide)}&lang=fr`;
     const html = await this.getHtml(url, 15000);
     const $ = cheerio.load(html);
-    const out: Record<string, string> = {};
-    const ide = $('body').text().match(/CHE-\d{3}\.\d{3}\.\d{3}/);
-    if (ide) out['ide'] = ide[0];
-    const tva = $('body').text().match(/CHE-\d{3}\.\d{3}\.\d{3}\s*TVA/i);
-    if (tva) out['tva'] = tva[0].replace(/\s+/g, ' ').trim();
-    return out;
+    const norm = (s?: string) => (s ?? '').replace(/\s+/g, ' ').trim();
+
+    const getByLabel = (labels: string[]): string => {
+      let val = '';
+      const wanted = labels.map((l) => l.toLowerCase().replace(/:$/, ''));
+      $('label, .control-label, .form-label, strong, td, span, div').each(
+        (_, el) => {
+          const t = norm($(el).text()).toLowerCase().replace(/:$/, '');
+          if (!wanted.includes(t)) return;
+          const cont = $(el).closest(
+            '.row, .form-group, .mb-1, .mb-2, .mb-3, .col-md-9, tr',
+          );
+          let best = '';
+          cont.find('div, span, p, td').each((_, e2) => {
+            const x = norm($(e2).text());
+            if (x && x.toLowerCase().replace(/:$/, '') !== t && x.length > best.length) {
+              best = x;
+            }
+          });
+          if (!best) best = norm($(el).next().text());
+          if (best) {
+            val = best;
+            return false;
+          }
+        },
+      );
+      return val;
+    };
+
+    const canton = getByLabel(['Canton', 'Kanton']) || null;
+    const pays = getByLabel(['Pays', 'Land']) || null;
+    const rue = getByLabel(['Rue / Nr.', 'Rue', 'Strasse / Nr.']);
+    const npa = getByLabel(['NPA / Localité', 'NPA/Localité', 'NPA']);
+
+    let street: string | null = null;
+    let streetNumber: string | null = null;
+    if (rue) {
+      const m = rue.match(/^(.*?)[\s,]+(\d+\s?[a-zA-Z]?)$/);
+      if (m) {
+        street = m[1].trim();
+        streetNumber = m[2].replace(/\s/g, '');
+      } else street = rue;
+    }
+    let postalCode: string | null = null;
+    let city: string | null = null;
+    if (npa) {
+      const m = npa.match(/\b(\d{4})\b\s*(.+)?/);
+      if (m) {
+        postalCode = m[1];
+        city = norm(m[2] || '') || null;
+      }
+    }
+    return { canton, country: pays, street, streetNumber, postalCode, city };
   }
 }

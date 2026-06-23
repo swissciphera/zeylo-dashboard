@@ -64,6 +64,12 @@ enum ProjectStatus {
 enum ContactType {
   PROSPECT
   CLIENT
+  FORMER_CLIENT
+}
+
+enum ContactKind {
+  INDIVIDUAL
+  ENTERPRISE
 }
 
 enum ContactSource {
@@ -336,17 +342,33 @@ model ClientRating {
 }
 
 model Contact {
-  id        String        @id @default(cuid())
-  companyId String
-  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  type      ContactType   @default(PROSPECT)
-  source    ContactSource @default(MANUAL)
-  name      String
-  email     String?
-  phone     String?
-  notes     String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  companyId   String
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type        ContactType   @default(PROSPECT)
+  kind        ContactKind   @default(INDIVIDUAL)
+  source      ContactSource @default(MANUAL)
+  name        String // display name (computed: company name or "first last")
+  firstName   String?
+  lastName    String?
+  companyName String?
+  email       String?
+  phone       String?
+  // Structured address
+  street       String?
+  streetNumber String?
+  postalCode   String?
+  city         String?
+  canton       String?
+  country      String?
+  // Registry (for enterprise contacts)
+  ideNumber    String?
+  vatNumber    String?
+  registryData Json?
+  photoFileId  String?
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([companyId])
 }
