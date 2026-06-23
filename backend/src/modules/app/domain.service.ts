@@ -3,6 +3,7 @@ import { IsOptional, IsString, MinLength } from 'class-validator';
 import { promises as dns } from 'dns';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CaddyService } from '../../integrations/caddy.service';
 
 export class SetDomainDto {
   @IsString() @MinLength(3) domain!: string;
@@ -27,7 +28,24 @@ function target(): string {
 export class DomainService {
   private readonly logger = new Logger('Domain');
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly caddy: CaddyService,
+  ) {}
+
+  // ACME email = company email, else the OWNER user's email, else default.
+  private async ownerEmail(companyId: string): Promise<string | undefined> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { email: true },
+    });
+    if (company?.email) return company.email;
+    const owner = await this.prisma.user.findFirst({
+      where: { companyId, role: 'OWNER' },
+      select: { email: true },
+    });
+    return owner?.email ?? undefined;
+  }
 
   private cleanDomain(input: string): string {
     const d = (input || '')
@@ -91,6 +109,15 @@ export class DomainService {
     });
     if (existing) throw new BadRequestException('Ce domaine est déjà utilisé.');
 
+    // If switching from a previously configured domain, deprovision it.
+    const prev = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { linkDomain: true },
+    });
+    if (prev?.linkDomain && prev.linkDomain !== domain) {
+      await this.caddy.removeDomain(prev.linkDomain);
+    }
+
     const token = `zeylo-verify=${randomBytes(16).toString('hex')}`;
     await this.prisma.company.update({
       where: { id: companyId },
@@ -105,6 +132,10 @@ export class DomainService {
   }
 
   async remove(companyId: string) {
+    const prev = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { linkDomain: true },
+    });
     await this.prisma.company.update({
       where: { id: companyId },
       data: {
@@ -114,6 +145,7 @@ export class DomainService {
         linkDomainVerifiedAt: null,
       },
     });
+    if (prev?.linkDomain) await this.caddy.removeDomain(prev.linkDomain);
     return this.get(companyId);
   }
 
@@ -173,6 +205,8 @@ export class DomainService {
         where: { id: companyId },
         data: { linkDomainStatus: 'VERIFIED', linkDomainVerifiedAt: new Date() },
       });
+      // Provision a real TLS certificate for this domain under the owner email.
+      await this.caddy.ensureDomain(domain, await this.ownerEmail(companyId));
     }
     return { verified, cnameOk, txtOk, ...(await this.get(companyId)) };
   }

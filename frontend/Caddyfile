@@ -3,6 +3,9 @@
 # first HTTPS request — but ONLY if the backend authorizes it (verified domain).
 {
 	email {$ACME_EMAIL:admin@ciphera.ch}
+	# Admin API reachable by the backend (internal network) to provision
+	# per-domain certificates with each owner's email.
+	admin 0.0.0.0:2019
 	on_demand_tls {
 		ask {$DOMAIN_ASK_URL:http://backend:3000/api/public/domain-allowed}
 	}

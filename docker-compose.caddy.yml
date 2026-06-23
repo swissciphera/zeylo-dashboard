@@ -58,6 +58,9 @@ services:
       PROXY_URL: ${PROXY_URL}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL}
       PUBLIC_LINK_TARGET: ${PUBLIC_LINK_TARGET}
+      ACME_EMAIL: ${ACME_EMAIL}
+      # Lets the backend provision per-domain TLS via Caddy's Admin API
+      CADDY_ADMIN_URL: http://frontend:2019
     volumes:
       - file_storage:/app/storage
     networks:
@@ -81,6 +84,9 @@ services:
     networks:
       - zeylo
     # Public entry: needs 80 + 443 to obtain/serve certificates.
+    # 2019 (admin API) stays internal — used by the backend, never published.
+    expose:
+      - "2019"
     ports:
       - "80:80"
       - "443:443"
