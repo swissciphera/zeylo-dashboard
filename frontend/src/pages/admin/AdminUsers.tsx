@@ -20,7 +20,7 @@ import { adminApi, apiErrorMessage } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 
 const ROLE_LABEL: Record<string, string> = {
-  OWNER: 'Patron',
+  OWNER: 'Dirigeant',
   MANAGER: 'Manager',
   STAFF: 'Employé',
 };
@@ -216,8 +216,10 @@ function UserFormModal({
   onSaved: () => void;
 }) {
   const isEdit = !!user;
+  const nameParts = (user?.name ?? '').trim().split(' ');
   const [form, setForm] = useState({
-    name: user?.name ?? '',
+    firstName: user ? nameParts[0] ?? '' : '',
+    lastName: user ? nameParts.slice(1).join(' ') : '',
     email: user?.email ?? '',
     password: '',
     role: user?.role ?? 'OWNER',
@@ -244,16 +246,17 @@ function UserFormModal({
     setSaving(true);
     setError(null);
     try {
+      const fullName = `${form.firstName} ${form.lastName}`.trim();
       if (isEdit) {
         await adminApi.put(`/admin/users/${user!.id}`, {
-          name: form.name,
+          name: fullName,
           email: form.email,
           role: form.role,
           isActive: form.isActive,
         });
       } else {
         const payload: any = {
-          name: form.name,
+          name: fullName,
           email: form.email,
           password: form.password,
           role: form.role,
@@ -261,7 +264,7 @@ function UserFormModal({
         if (form.companyMode === 'existing' && form.companyId) {
           payload.companyId = form.companyId;
         } else {
-          payload.companyName = form.companyName || form.name;
+          payload.companyName = form.companyName || fullName;
         }
         await adminApi.post('/admin/users', payload);
       }
@@ -291,13 +294,17 @@ function UserFormModal({
       <form id="user-form" onSubmit={submit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">Nom</label>
-            <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <label className="label">Prénom</label>
+            <input className="input" required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
           </div>
           <div>
-            <label className="label">Email</label>
-            <input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <label className="label">Nom</label>
+            <input className="input" required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
           </div>
+        </div>
+        <div>
+          <label className="label">Email</label>
+          <input className="input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
 
         {!isEdit && (
@@ -318,8 +325,7 @@ function UserFormModal({
         <div>
           <label className="label">Rôle</label>
           <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            <option value="OWNER">Patron</option>
-            <option value="MANAGER">Manager</option>
+            <option value="OWNER">Dirigeant</option>
             <option value="STAFF">Employé</option>
           </select>
         </div>
