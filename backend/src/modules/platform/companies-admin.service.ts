@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { ClientMetaInfo } from '../../common/decorators/client-meta.decorator';
 
 @Injectable()
 export class CompaniesAdminService {
@@ -35,7 +36,12 @@ export class CompaniesAdminService {
   }
 
   // Detail view. Support access to business content is journaled separately.
-  async detail(id: string, adminId: string, adminName: string) {
+  async detail(
+    id: string,
+    adminId: string,
+    adminName: string,
+    meta: ClientMetaInfo = {},
+  ) {
     const company = await this.prisma.company.findUnique({
       where: { id },
       include: {
@@ -77,6 +83,9 @@ export class CompaniesAdminService {
       actorName: adminName,
       companyId: id,
       action: 'company.view',
+      ip: meta.ip,
+      city: meta.city,
+      country: meta.country,
     });
 
     return {

@@ -10,6 +10,10 @@ import {
 } from '@nestjs/common';
 import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard';
 import { CurrentAdmin } from '../../common/decorators/current-user.decorator';
+import {
+  ClientMeta,
+  ClientMetaInfo,
+} from '../../common/decorators/client-meta.decorator';
 import { AdminPrincipal } from '../../common/types';
 import { OverviewService } from './overview.service';
 import { CompaniesAdminService } from './companies-admin.service';
@@ -55,8 +59,9 @@ export class PlatformController {
   companyDetail(
     @Param('id') id: string,
     @CurrentAdmin() admin: AdminPrincipal,
+    @ClientMeta() meta: ClientMetaInfo,
   ) {
-    return this.companies.detail(id, admin.sub, admin.name);
+    return this.companies.detail(id, admin.sub, admin.name, meta);
   }
 
   @Post('companies/:id/support-access')
@@ -64,8 +69,9 @@ export class PlatformController {
     @Param('id') id: string,
     @Body() dto: SupportAccessDto,
     @CurrentAdmin() admin: AdminPrincipal,
+    @ClientMeta() meta: ClientMetaInfo,
   ) {
-    return this.support.access(id, dto, admin.sub, admin.name);
+    return this.support.access(id, dto, admin.sub, admin.name, meta);
   }
 
   @Get('billing')

@@ -435,6 +435,8 @@ model AuditLog {
   reason     String?
   metadata   Json?
   ip         String?
+  city       String?
+  country    String?
   createdAt  DateTime      @default(now())
 
   @@index([actorType, actorId])

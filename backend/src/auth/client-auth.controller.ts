@@ -1,12 +1,8 @@
+import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Ip,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+  ClientMeta,
+  ClientMetaInfo,
+} from '../common/decorators/client-meta.decorator';
 import { Throttle } from '@nestjs/throttler';
 import { ClientAuthService } from './client-auth.service';
 import { LoginDto, RefreshDto, RegisterClientDto } from './dto/auth.dto';
@@ -20,15 +16,18 @@ export class ClientAuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
-  async register(@Body() dto: RegisterClientDto, @Ip() ip: string) {
-    return this.auth.register(dto, ip);
+  async register(
+    @Body() dto: RegisterClientDto,
+    @ClientMeta() meta: ClientMetaInfo,
+  ) {
+    return this.auth.register(dto, meta);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   @Post('login')
-  async login(@Body() dto: LoginDto, @Ip() ip: string) {
-    return this.auth.login(dto, ip);
+  async login(@Body() dto: LoginDto, @ClientMeta() meta: ClientMetaInfo) {
+    return this.auth.login(dto, meta);
   }
 
   @HttpCode(200)

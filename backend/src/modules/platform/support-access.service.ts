@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { IsIn, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { ClientMetaInfo } from '../../common/decorators/client-meta.decorator';
 
 export class SupportAccessDto {
   @IsIn(['employees', 'projects', 'services', 'contacts'])
@@ -27,6 +28,7 @@ export class SupportAccessService {
     dto: SupportAccessDto,
     adminId: string,
     adminName: string,
+    meta: ClientMetaInfo = {},
   ) {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
@@ -44,6 +46,9 @@ export class SupportAccessService {
       companyId,
       action: `support.access.${dto.resource}`,
       reason: dto.reason,
+      ip: meta.ip,
+      city: meta.city,
+      country: meta.country,
     });
 
     // Return the requested business content (read-only).

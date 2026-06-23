@@ -1,12 +1,8 @@
+import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Ip,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+  ClientMeta,
+  ClientMetaInfo,
+} from '../common/decorators/client-meta.decorator';
 import { Throttle } from '@nestjs/throttler';
 import { AdminAuthService } from './admin-auth.service';
 import { LoginDto, RefreshDto, SetupAdminDto } from './dto/auth.dto';
@@ -26,15 +22,15 @@ export class AdminAuthController {
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('setup')
-  async setup(@Body() dto: SetupAdminDto, @Ip() ip: string) {
-    return this.auth.setupFirstAdmin(dto, ip);
+  async setup(@Body() dto: SetupAdminDto, @ClientMeta() meta: ClientMetaInfo) {
+    return this.auth.setupFirstAdmin(dto, meta);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   @Post('auth/login')
-  async login(@Body() dto: LoginDto, @Ip() ip: string) {
-    return this.auth.login(dto, ip);
+  async login(@Body() dto: LoginDto, @ClientMeta() meta: ClientMetaInfo) {
+    return this.auth.login(dto, meta);
   }
 
   @HttpCode(200)

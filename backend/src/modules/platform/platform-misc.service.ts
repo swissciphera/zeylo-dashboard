@@ -23,6 +23,8 @@ export class PlatformMiscService {
       company: l.company?.name ?? null,
       companyId: l.companyId,
       ip: l.ip,
+      city: l.city,
+      country: l.country,
       createdAt: l.createdAt,
     }));
   }

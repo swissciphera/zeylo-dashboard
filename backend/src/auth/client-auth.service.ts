@@ -10,6 +10,7 @@ import { BruteForceService } from './brute-force.service';
 import { AuditService } from '../common/audit/audit.service';
 import { LoginDto, RegisterClientDto } from './dto/auth.dto';
 import { generateReferralCode } from '../common/utils';
+import { ClientMetaInfo } from '../common/decorators/client-meta.decorator';
 
 @Injectable()
 export class ClientAuthService {
@@ -21,7 +22,7 @@ export class ClientAuthService {
   ) {}
 
   // Self-service signup: creates a tenant Company + its OWNER user.
-  async register(dto: RegisterClientDto, ip?: string) {
+  async register(dto: RegisterClientDto, meta: ClientMetaInfo = {}) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
@@ -76,13 +77,15 @@ export class ClientAuthService {
       companyId: result.company.id,
       actorName: result.user.name,
       action: 'client.register',
-      ip,
+      ip: meta.ip,
+      city: meta.city,
+      country: meta.country,
     });
 
     return this.issueFor(result.user);
   }
 
-  async login(dto: LoginDto, ip?: string) {
+  async login(dto: LoginDto, meta: ClientMetaInfo = {}) {
     await this.bruteForce.assertNotLocked('CLIENT', dto.email);
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
@@ -92,10 +95,10 @@ export class ClientAuthService {
       user.isActive &&
       (await TokenService.verifyPassword(user.passwordHash, dto.password));
     if (!ok) {
-      await this.bruteForce.record('CLIENT', dto.email, false, ip);
+      await this.bruteForce.record('CLIENT', dto.email, false, meta.ip);
       throw new UnauthorizedException('Identifiants invalides.');
     }
-    await this.bruteForce.record('CLIENT', dto.email, true, ip);
+    await this.bruteForce.record('CLIENT', dto.email, true, meta.ip);
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
@@ -106,7 +109,9 @@ export class ClientAuthService {
       companyId: user.companyId,
       actorName: user.name,
       action: 'client.login',
-      ip,
+      ip: meta.ip,
+      city: meta.city,
+      country: meta.country,
     });
     return this.issueFor(user);
   }

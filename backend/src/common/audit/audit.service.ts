@@ -12,6 +12,8 @@ interface AuditInput {
   reason?: string;
   metadata?: Prisma.InputJsonValue;
   ip?: string;
+  city?: string;
+  country?: string;
 }
 
 // Central place to record sensitive actions into the audit log.
@@ -31,6 +33,8 @@ export class AuditService {
         reason: input.reason,
         metadata: input.metadata,
         ip: input.ip,
+        city: input.city,
+        country: input.country,
       },
     });
   }

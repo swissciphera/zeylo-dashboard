@@ -9,6 +9,7 @@ import { TokenService } from './token.service';
 import { BruteForceService } from './brute-force.service';
 import { AuditService } from '../common/audit/audit.service';
 import { LoginDto, SetupAdminDto } from './dto/auth.dto';
+import { ClientMetaInfo } from '../common/decorators/client-meta.decorator';
 
 @Injectable()
 export class AdminAuthService {
@@ -25,7 +26,7 @@ export class AdminAuthService {
     return count === 0;
   }
 
-  async setupFirstAdmin(dto: SetupAdminDto, ip?: string) {
+  async setupFirstAdmin(dto: SetupAdminDto, meta: ClientMetaInfo = {}) {
     // Hard guard: only allowed when no admin exists yet.
     const count = await this.prisma.platformAdmin.count();
     if (count > 0) {
@@ -50,13 +51,15 @@ export class AdminAuthService {
       adminId: admin.id,
       actorName: admin.name,
       action: 'admin.setup',
-      ip,
+      ip: meta.ip,
+      city: meta.city,
+      country: meta.country,
     });
     return { id: admin.id, email: admin.email };
   }
 
   // ── Login / refresh / logout ────────────────────────────────
-  async login(dto: LoginDto, ip?: string) {
+  async login(dto: LoginDto, meta: ClientMetaInfo = {}) {
     await this.bruteForce.assertNotLocked('ADMIN', dto.email);
     const admin = await this.prisma.platformAdmin.findUnique({
       where: { email: dto.email.toLowerCase() },
@@ -66,10 +69,10 @@ export class AdminAuthService {
       admin.isActive &&
       (await TokenService.verifyPassword(admin.passwordHash, dto.password));
     if (!ok) {
-      await this.bruteForce.record('ADMIN', dto.email, false, ip);
+      await this.bruteForce.record('ADMIN', dto.email, false, meta.ip);
       throw new UnauthorizedException('Identifiants invalides.');
     }
-    await this.bruteForce.record('ADMIN', dto.email, true, ip);
+    await this.bruteForce.record('ADMIN', dto.email, true, meta.ip);
     await this.prisma.platformAdmin.update({
       where: { id: admin.id },
       data: { lastLoginAt: new Date() },
@@ -80,7 +83,9 @@ export class AdminAuthService {
       adminId: admin.id,
       actorName: admin.name,
       action: 'admin.login',
-      ip,
+      ip: meta.ip,
+      city: meta.city,
+      country: meta.country,
     });
 
     const pair = await this.tokens.issuePair('ADMIN', {

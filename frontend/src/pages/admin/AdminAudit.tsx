@@ -40,6 +40,15 @@ export function AdminAudit() {
     },
     { key: 'company', header: 'Entreprise', render: (r) => r.company || '—' },
     { key: 'reason', header: 'Raison', render: (r) => r.reason || '—' },
+    {
+      key: 'city',
+      header: 'Ville',
+      render: (r) => (
+        <span className="text-ink-soft">
+          {r.city ? `${r.city}${r.country ? `, ${r.country}` : ''}` : '—'}
+        </span>
+      ),
+    },
     { key: 'ip', header: 'IP', render: (r) => <span className="text-xs text-ink-faint">{r.ip || '—'}</span> },
   ];
 
