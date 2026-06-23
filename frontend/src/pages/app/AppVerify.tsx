@@ -405,14 +405,18 @@ function DetailsView({
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <a
-          href={data.sourceUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm text-ink-muted hover:text-ink hover:underline"
-        >
-          Voir la source ↗
-        </a>
+        {data.sourceUrl ? (
+          <a
+            href={data.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-ink-muted hover:text-ink hover:underline"
+          >
+            Voir au registre IDE ↗
+          </a>
+        ) : (
+          <span />
+        )}
         {saved ? (
           <span className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-600">
             <CheckCircle2 className="h-5 w-5" /> Importé dans votre entreprise

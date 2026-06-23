@@ -307,8 +307,18 @@ export class CompanyScraperService {
     const mlc = lc && lc.match(/(\d{2}\.\d{2}\.\d{4})/);
     if (mlc) last_notification = mlc[1];
 
+    // Source link points to the official UID registry (built from the IDE),
+    // not the Moneyhouse page we scraped from.
+    const ideMatch = (ide_number || '').match(/CHE-?\d{3}\.\d{3}\.\d{3}/);
+    const cleanIde = ideMatch
+      ? ideMatch[0].replace(/^CHE(?!-)/, 'CHE-')
+      : null;
+    const sourceUrl = cleanIde
+      ? `https://www.uid.admin.ch/Detail.aspx?uid_id=${cleanIde}`
+      : null;
+
     return {
-      sourceUrl: url,
+      sourceUrl,
       company_name,
       status,
       registry_number,
