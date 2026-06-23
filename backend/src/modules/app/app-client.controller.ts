@@ -38,6 +38,7 @@ import {
 } from './projects.service';
 import { ContactsService, ContactDto } from './contacts.service';
 import { SubscriptionService } from './subscription.service';
+import { DomainService, SetDomainDto, CloudflareDto } from './domain.service';
 
 // All tenant endpoints live under /api/app and are scoped to the caller's company.
 @UseGuards(ClientJwtGuard)
@@ -51,7 +52,37 @@ export class AppClientController {
     private readonly projects: ProjectsService,
     private readonly contacts: ContactsService,
     private readonly subscription: SubscriptionService,
+    private readonly domain: DomainService,
   ) {}
+
+  // ── Custom link domain ──────────────────────────────────────
+  @Get('domain')
+  getDomain(@CurrentCompany() companyId: string) {
+    return this.domain.get(companyId);
+  }
+
+  @Post('domain')
+  setDomain(@CurrentCompany() companyId: string, @Body() dto: SetDomainDto) {
+    return this.domain.set(companyId, dto);
+  }
+
+  @Delete('domain')
+  removeDomain(@CurrentCompany() companyId: string) {
+    return this.domain.remove(companyId);
+  }
+
+  @Post('domain/verify')
+  verifyDomain(@CurrentCompany() companyId: string) {
+    return this.domain.verify(companyId);
+  }
+
+  @Post('domain/cloudflare')
+  cloudflareDomain(
+    @CurrentCompany() companyId: string,
+    @Body() dto: CloudflareDto,
+  ) {
+    return this.domain.cloudflare(companyId, dto);
+  }
 
   // ── Subscription ────────────────────────────────────────────
   @Get('subscription')

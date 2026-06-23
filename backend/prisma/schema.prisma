@@ -78,6 +78,12 @@ enum ContactSource {
   EMAIL_INBOX
 }
 
+enum LinkDomainStatus {
+  NONE
+  PENDING
+  VERIFIED
+}
+
 enum PaymentStatus {
   PAID
   PENDING
@@ -182,6 +188,11 @@ model Company {
   verificationSourceUrl String?
   autoVerify         Boolean            @default(false)
   lastAutoVerifyAt   DateTime?
+  // Custom domain for branded temporary links
+  linkDomain           String?          @unique
+  linkDomainStatus     LinkDomainStatus @default(NONE)
+  linkDomainToken      String?
+  linkDomainVerifiedAt DateTime?
   referredById       String?
   referredBy         Company?           @relation("CompanyReferrals", fields: [referredById], references: [id])
   referrals          Company[]          @relation("CompanyReferrals")

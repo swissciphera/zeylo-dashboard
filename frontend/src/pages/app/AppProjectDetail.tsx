@@ -75,7 +75,7 @@ export function AppProjectDetail() {
     setError(null);
     try {
       const res = await clientApi.post(`/app/projects/${id}/temp-access`, { phone: tempPhone });
-      setGeneratedLink(`${window.location.origin}/access/${res.data.token}`);
+      setGeneratedLink(res.data.url || `${window.location.origin}/access/${res.data.token}`);
       invalidate();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -86,7 +86,7 @@ export function AppProjectDetail() {
 
   async function createRatingLink() {
     const res = await clientApi.post(`/app/projects/${id}/rating-link`);
-    setGeneratedLink(`${window.location.origin}/rate/${res.data.token}`);
+    setGeneratedLink(res.data.url || `${window.location.origin}/rate/${res.data.token}`);
   }
 
   if (isLoading || !data) return <LoadingState />;

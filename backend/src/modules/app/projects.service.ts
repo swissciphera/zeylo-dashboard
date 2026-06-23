@@ -123,6 +123,19 @@ export class ProjectsService {
     return { ok: true };
   }
 
+  // Base URL for branded links: the company's verified custom domain if any,
+  // otherwise the platform's public URL.
+  private async linkBase(companyId: string): Promise<string> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { linkDomain: true, linkDomainStatus: true },
+    });
+    if (company?.linkDomainStatus === 'VERIFIED' && company.linkDomain) {
+      return `https://${company.linkDomain}`;
+    }
+    return (process.env.PUBLIC_APP_URL || '').replace(/\/$/, '');
+  }
+
   // Temporary employee access: one-time link + SMS code, single project scope.
   async createTempAccess(companyId: string, id: string, dto: TempAccessDto) {
     await this.ensureOwned(companyId, id);
@@ -138,11 +151,13 @@ export class ProjectsService {
         expiresAt: new Date(Date.now() + 24 * 3600_000),
       },
     });
+    const base = await this.linkBase(companyId);
+    const url = base ? `${base}/access/${token}` : null;
     await this.sms.send(
       dto.phone,
       `Zeylo : votre code d'accès chantier est ${code}`,
     );
-    return { id: access.id, token, expiresAt: access.expiresAt };
+    return { id: access.id, token, url, expiresAt: access.expiresAt };
   }
 
   // Generate a one-time client rating link for the project.
@@ -157,7 +172,9 @@ export class ProjectsService {
         expiresAt: new Date(Date.now() + 14 * 86400_000),
       },
     });
-    return { token, expiresAt: rating.expiresAt };
+    const base = await this.linkBase(companyId);
+    const url = base ? `${base}/rate/${token}` : null;
+    return { token, url, expiresAt: rating.expiresAt };
   }
 
   private async ensureOwned(companyId: string, id: string) {
