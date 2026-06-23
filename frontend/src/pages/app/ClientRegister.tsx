@@ -11,7 +11,8 @@ export function ClientRegister() {
   const [form, setForm] = useState({
     companyName: '',
     sector: '',
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     referralCode: '',
@@ -67,13 +68,22 @@ export function ClientRegister() {
               placeholder="Nettoyage, fiduciaire, maintenance…"
             />
           </div>
-          <div className="col-span-2">
-            <label className="label">Votre nom</label>
+          <div>
+            <label className="label">Prénom</label>
             <input
               className="input"
               required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">Nom</label>
+            <input
+              className="input"
+              required
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             />
           </div>
           <div className="col-span-2">

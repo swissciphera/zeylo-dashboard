@@ -19,7 +19,8 @@ import { ClientMetaInfo } from '../../common/decorators/client-meta.decorator';
 import { generateReferralCode } from '../../common/utils';
 
 export class CreateUserDto {
-  @IsString() @MinLength(1) name!: string;
+  @IsString() @MinLength(1) firstName!: string;
+  @IsString() @MinLength(1) lastName!: string;
   @IsEmail() email!: string;
   @IsString() @MinLength(10) password!: string;
   @IsOptional() @IsEnum(UserRole) role?: UserRole;
@@ -31,7 +32,8 @@ export class CreateUserDto {
 }
 
 export class UpdateUserDto {
-  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() firstName?: string;
+  @IsOptional() @IsString() lastName?: string;
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsEnum(UserRole) role?: UserRole;
   @IsOptional() @IsBoolean() isActive?: boolean;
@@ -50,7 +52,8 @@ export class UsersAdminService {
       where: search
         ? {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
               { email: { contains: search, mode: 'insensitive' } },
             ],
           }
@@ -80,7 +83,9 @@ export class UsersAdminService {
       const trialDays = settings?.trialDays ?? 14;
       const company = await this.prisma.company.create({
         data: {
-          name: dto.companyName?.trim() || dto.name,
+          name:
+            dto.companyName?.trim() ||
+            `${dto.firstName} ${dto.lastName}`.trim(),
           sector: dto.sector,
           subscriptionStatus: 'TRIAL',
           trialEndsAt: new Date(Date.now() + trialDays * 86400_000),
@@ -95,7 +100,8 @@ export class UsersAdminService {
         companyId,
         email,
         passwordHash: await TokenService.hashPassword(dto.password),
-        name: dto.name,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         role: dto.role ?? 'OWNER',
       },
       include: { company: { select: { id: true, name: true } } },
@@ -133,7 +139,8 @@ export class UsersAdminService {
     const updated = await this.prisma.user.update({
       where: { id },
       data: {
-        name: dto.name,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         email: dto.email ? dto.email.toLowerCase() : undefined,
         role: dto.role,
         isActive: dto.isActive,
@@ -213,7 +220,9 @@ export class UsersAdminService {
   private toPublic(u: any) {
     return {
       id: u.id,
-      name: u.name,
+      name: `${u.firstName} ${u.lastName}`.trim(),
+      firstName: u.firstName,
+      lastName: u.lastName,
       email: u.email,
       role: u.role,
       isActive: u.isActive,

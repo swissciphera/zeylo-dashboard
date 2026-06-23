@@ -46,7 +46,11 @@ export class RegisterClientDto {
 
   @IsString()
   @IsNotEmpty()
-  name!: string;
+  firstName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName!: string;
 
   @IsEmail()
   email!: string;

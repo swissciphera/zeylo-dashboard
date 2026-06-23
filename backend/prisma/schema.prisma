@@ -111,7 +111,8 @@ model User {
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   email        String   @unique
   passwordHash String
-  name         String
+  firstName    String
+  lastName     String
   role         UserRole @default(OWNER)
   isActive     Boolean  @default(true)
   lastLoginAt  DateTime?

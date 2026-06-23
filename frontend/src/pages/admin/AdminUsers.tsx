@@ -28,6 +28,8 @@ const ROLE_LABEL: Record<string, string> = {
 interface User {
   id: string;
   name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: string;
   isActive: boolean;
@@ -216,10 +218,9 @@ function UserFormModal({
   onSaved: () => void;
 }) {
   const isEdit = !!user;
-  const nameParts = (user?.name ?? '').trim().split(' ');
   const [form, setForm] = useState({
-    firstName: user ? nameParts[0] ?? '' : '',
-    lastName: user ? nameParts.slice(1).join(' ') : '',
+    firstName: user?.firstName ?? '',
+    lastName: user?.lastName ?? '',
     email: user?.email ?? '',
     password: '',
     role: user?.role ?? 'OWNER',
@@ -249,14 +250,16 @@ function UserFormModal({
       const fullName = `${form.firstName} ${form.lastName}`.trim();
       if (isEdit) {
         await adminApi.put(`/admin/users/${user!.id}`, {
-          name: fullName,
+          firstName: form.firstName,
+          lastName: form.lastName,
           email: form.email,
           role: form.role,
           isActive: form.isActive,
         });
       } else {
         const payload: any = {
-          name: fullName,
+          firstName: form.firstName,
+          lastName: form.lastName,
           email: form.email,
           password: form.password,
           role: form.role,

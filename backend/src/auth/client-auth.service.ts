@@ -59,7 +59,8 @@ export class ClientAuthService {
           companyId: company.id,
           email: dto.email.toLowerCase(),
           passwordHash: await TokenService.hashPassword(dto.password),
-          name: dto.name,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
           role: 'OWNER',
         },
       });
@@ -75,7 +76,7 @@ export class ClientAuthService {
       actorType: 'CLIENT',
       actorId: result.user.id,
       companyId: result.company.id,
-      actorName: result.user.name,
+      actorName: `${result.user.firstName} ${result.user.lastName}`.trim(),
       action: 'client.register',
       ip: meta.ip,
       city: meta.city,
@@ -107,7 +108,7 @@ export class ClientAuthService {
       actorType: 'CLIENT',
       actorId: user.id,
       companyId: user.companyId,
-      actorName: user.name,
+      actorName: `${user.firstName} ${user.lastName}`.trim(),
       action: 'client.login',
       ip: meta.ip,
       city: meta.city,
@@ -136,15 +137,17 @@ export class ClientAuthService {
   private async issueFor(user: {
     id: string;
     email: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     role: string;
     companyId: string;
   }) {
+    const name = `${user.firstName} ${user.lastName}`.trim();
     const pair = await this.tokens.issuePair('CLIENT', {
       actor: 'CLIENT',
       sub: user.id,
       email: user.email,
-      name: user.name,
+      name,
       role: user.role,
       companyId: user.companyId,
     });
@@ -153,7 +156,9 @@ export class ClientAuthService {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
         companyId: user.companyId,
       },
