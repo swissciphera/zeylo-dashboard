@@ -134,15 +134,35 @@ export class DomainService {
       const cnames = await dns.resolveCname(domain);
       cnameOk = cnames.some((v) => v.toLowerCase().replace(/\.$/, '') === tgt);
     } catch {
-      // Some setups expose the target via A/ALIAS; treat as not-yet for clarity.
       cnameOk = false;
+    }
+    // When the record is proxied (e.g. Cloudflare orange cloud), public DNS
+    // hides the CNAME behind A/AAAA records. Treat a resolvable domain as ok —
+    // ownership is still proven by the TXT token below.
+    if (!cnameOk) {
+      try {
+        const a = await dns.resolve4(domain);
+        if (a.length) cnameOk = true;
+      } catch {
+        /* ignore */
+      }
+      if (!cnameOk) {
+        try {
+          const aaaa = await dns.resolve6(domain);
+          if (aaaa.length) cnameOk = true;
+        } catch {
+          /* ignore */
+        }
+      }
     }
 
     let txtOk = false;
     try {
       const txt = await dns.resolveTxt(`_zeylo-verify.${domain}`);
-      const flat = txt.flat().map((s) => s.trim());
-      txtOk = flat.includes(c.linkDomainToken);
+      // Strip surrounding quotes/whitespace (Cloudflare may quote TXT content).
+      const want = c.linkDomainToken.trim().replace(/^"+|"+$/g, '');
+      const flat = txt.flat().map((s) => s.trim().replace(/^"+|"+$/g, ''));
+      txtOk = flat.includes(want);
     } catch {
       txtOk = false;
     }
