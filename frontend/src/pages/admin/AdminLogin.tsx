@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AuthShell } from '@/components/layout/AuthShell';
-import { Spinner } from '@/components/ui/LoadingState';
+import { LoadingState, Spinner } from '@/components/ui/LoadingState';
 import { adminApi, apiErrorMessage } from '@/lib/api';
 import { useAdminAuth } from '@/stores/auth';
 
@@ -14,8 +14,9 @@ export function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Redirect to setup when no admin exists yet (n8n/Chatwoot behaviour).
-  const { data } = useQuery({
+  // First-run gate: read fresh status, redirect to /admin/setup when no admin
+  // exists yet (n8n/Chatwoot behaviour). Done at render time for reliability.
+  const { data, isLoading } = useQuery({
     queryKey: ['setup-status'],
     queryFn: async () =>
       (await adminApi.get('/admin/setup/status')).data as {
@@ -25,13 +26,15 @@ export function AdminLogin() {
     gcTime: 0,
   });
 
-  useEffect(() => {
-    if (data?.needsSetup) navigate('/admin/setup', { replace: true });
-  }, [data, navigate]);
-
-  useEffect(() => {
-    if (token) navigate('/admin', { replace: true });
-  }, [token, navigate]);
+  if (token) return <Navigate to="/admin" replace />;
+  if (isLoading) {
+    return (
+      <AuthShell side="platform">
+        <LoadingState label="Initialisation…" />
+      </AuthShell>
+    );
+  }
+  if (data?.needsSetup) return <Navigate to="/admin/setup" replace />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

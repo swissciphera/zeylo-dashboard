@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { AuthShell } from '@/components/layout/AuthShell';
-import { Spinner } from '@/components/ui/LoadingState';
+import { LoadingState, Spinner } from '@/components/ui/LoadingState';
 import { adminApi, apiErrorMessage } from '@/lib/api';
 
 export function AdminSetup() {
@@ -30,10 +30,6 @@ export function AdminSetup() {
     gcTime: 0,
   });
 
-  useEffect(() => {
-    if (data && !data.needsSetup) navigate('/admin/login', { replace: true });
-  }, [data, navigate]);
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -54,13 +50,15 @@ export function AdminSetup() {
     }
   }
 
-  if (isLoading || (data && !data.needsSetup)) {
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spinner className="h-7 w-7" />
-      </div>
+      <AuthShell side="platform">
+        <LoadingState label="Initialisation…" />
+      </AuthShell>
     );
   }
+  // Setup is locked once an admin exists.
+  if (data && !data.needsSetup) return <Navigate to="/admin/login" replace />;
 
   return (
     <AuthShell side="platform">
