@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Search,
   Building2,
@@ -8,10 +9,12 @@ import {
   BadgeCheck,
   Users,
   ChevronLeft,
+  PencilLine,
+  Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Spinner } from '@/components/ui/LoadingState';
+import { LoadingState, Spinner } from '@/components/ui/LoadingState';
 import { Badge } from '@/components/ui/Badge';
 import { clientApi, apiErrorMessage } from '@/lib/api';
 
@@ -22,6 +25,35 @@ interface SearchResult {
 }
 
 export function AppVerify() {
+  const { data: status } = useQuery({
+    queryKey: ['verify-status'],
+    queryFn: async () =>
+      (await clientApi.get('/app/company-verification/status')).data as {
+        available: boolean;
+      },
+  });
+
+  return (
+    <>
+      <PageHeader
+        title="Vérification d'entreprise"
+        subtitle="Recherchez une entreprise suisse et importez ses données officielles"
+      />
+      {status === undefined ? (
+        <div className="card">
+          <LoadingState />
+        </div>
+      ) : status.available ? (
+        <AutoVerify />
+      ) : (
+        <ManualEntry />
+      )}
+    </>
+  );
+}
+
+// ── Automatic mode (proxy available) ──────────────────────────
+function AutoVerify() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -43,9 +75,7 @@ export function AppVerify() {
     setDetails(null);
     setSaved(false);
     try {
-      const res = await clientApi.post('/app/company-verification/search', {
-        query,
-      });
+      const res = await clientApi.post('/app/company-verification/search', { query });
       setResults(res.data);
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -61,9 +91,7 @@ export function AppVerify() {
     setLoadingDetails(true);
     setError(null);
     try {
-      const res = await clientApi.post('/app/company-verification/details', {
-        url: r.lien,
-      });
+      const res = await clientApi.post('/app/company-verification/details', { url: r.lien });
       setDetails(res.data);
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -77,9 +105,7 @@ export function AppVerify() {
     setSaving(true);
     setError(null);
     try {
-      await clientApi.post('/app/company-verification/save', {
-        url: selected.lien,
-      });
+      await clientApi.post('/app/company-verification/save', { url: selected.lien });
       setSaved(true);
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -90,12 +116,6 @@ export function AppVerify() {
 
   return (
     <>
-      <PageHeader
-        title="Vérification d'entreprise"
-        subtitle="Recherchez une entreprise suisse et importez ses données officielles"
-      />
-
-      {/* Search */}
       <form onSubmit={doSearch} className="mb-6">
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -119,7 +139,6 @@ export function AppVerify() {
         </div>
       )}
 
-      {/* Detail view */}
       {selected ? (
         <div>
           <button
@@ -131,7 +150,6 @@ export function AppVerify() {
           >
             <ChevronLeft className="h-4 w-4" /> Retour aux résultats
           </button>
-
           {loadingDetails ? (
             <div className="card flex flex-col items-center justify-center py-20">
               <Spinner className="h-8 w-8" />
@@ -141,16 +159,10 @@ export function AppVerify() {
               <p className="mt-1 text-xs text-ink-faint">{selected.nom}</p>
             </div>
           ) : details ? (
-            <DetailsView
-              data={details}
-              saving={saving}
-              saved={saved}
-              onSave={save}
-            />
+            <DetailsView data={details} saving={saving} saved={saved} onSave={save} />
           ) : null}
         </div>
       ) : (
-        // Results list
         <>
           {searching && (
             <div className="card flex flex-col items-center justify-center py-16">
@@ -158,7 +170,6 @@ export function AppVerify() {
               <p className="mt-3 text-sm text-ink-muted">Recherche en cours…</p>
             </div>
           )}
-
           {results && !searching && (
             results.length === 0 ? (
               <div className="card">
@@ -193,25 +204,137 @@ export function AppVerify() {
               </div>
             )
           )}
-
           {!results && !searching && (
             <div className="card flex flex-col items-center gap-3 p-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
                 <BadgeCheck className="h-7 w-7" />
               </div>
-              <h3 className="text-base font-semibold text-ink">
-                Vérifiez une entreprise
-              </h3>
+              <h3 className="text-base font-semibold text-ink">Vérifiez une entreprise</h3>
               <p className="max-w-sm text-sm text-ink-muted">
-                Tapez le nom d'une entreprise suisse pour récupérer ses
-                informations au registre du commerce (IDE, TVA, adresse,
-                direction…) et les importer dans votre profil.
+                Tapez le nom d'une entreprise suisse pour récupérer ses informations
+                au registre du commerce (IDE, TVA, adresse, direction…).
               </p>
             </div>
           )}
         </>
       )}
     </>
+  );
+}
+
+// ── Manual mode (no proxy configured) ─────────────────────────
+function ManualEntry() {
+  const [form, setForm] = useState({
+    name: '',
+    sector: '',
+    address: '',
+    ideNumber: '',
+    vatNumber: '',
+    email: '',
+    phone: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Prefill with the current company.
+  useEffect(() => {
+    clientApi.get('/app/company').then((res) => {
+      const c = res.data || {};
+      setForm((f) => ({
+        ...f,
+        name: c.name ?? '',
+        sector: c.sector ?? '',
+        address: c.address ?? '',
+        ideNumber: c.ideNumber ?? '',
+        vatNumber: c.vatNumber ?? '',
+        email: c.email ?? '',
+        phone: c.phone ?? '',
+      }));
+    });
+  }, []);
+
+  const set = (k: string) => (e: any) => {
+    setForm({ ...form, [k]: e.target.value });
+    setSaved(false);
+  };
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await clientApi.put('/app/company', form);
+      setSaved(true);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <strong>Recherche automatique indisponible.</strong> Aucun proxy n'est
+          configuré, la recherche au registre est désactivée. Vous pouvez saisir
+          les informations de votre entreprise manuellement ci-dessous.
+        </div>
+      </div>
+
+      <form onSubmit={save} className="card max-w-2xl space-y-4 p-6">
+        <div className="flex items-center gap-2">
+          <PencilLine className="h-5 w-5 text-brand-600" />
+          <h3 className="font-semibold text-ink">Saisie manuelle</h3>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="label">Nom de l'entreprise</label>
+            <input className="input" value={form.name} onChange={set('name')} required />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Secteur</label>
+            <input className="input" value={form.sector} onChange={set('sector')} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Adresse</label>
+            <input className="input" value={form.address} onChange={set('address')} />
+          </div>
+          <div>
+            <label className="label">IDE</label>
+            <input className="input font-mono" value={form.ideNumber} onChange={set('ideNumber')} placeholder="CHE-123.456.789" />
+          </div>
+          <div>
+            <label className="label">N° TVA</label>
+            <input className="input font-mono" value={form.vatNumber} onChange={set('vatNumber')} placeholder="CHE-123.456.789 TVA" />
+          </div>
+          <div>
+            <label className="label">Email</label>
+            <input className="input" value={form.email} onChange={set('email')} />
+          </div>
+          <div>
+            <label className="label">Téléphone</label>
+            <input className="input" value={form.phone} onChange={set('phone')} />
+          </div>
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="flex items-center justify-end gap-3">
+          {saved && (
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+              <CheckCircle2 className="h-5 w-5" /> Enregistré
+            </span>
+          )}
+          <button className="btn-primary" disabled={saving}>
+            {saving ? <Spinner className="h-4 w-4 text-white" /> : <BadgeCheck className="h-4 w-4" />}
+            Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

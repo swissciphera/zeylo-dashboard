@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import * as cheerio from 'cheerio';
-import { ProxyAgent, fetch as undiciFetch } from 'undici';
+import { fetch as undiciFetch } from 'undici';
+import { ProxyService } from '../../../integrations/proxy.service';
 
 const HEADERS = {
   'User-Agent':
@@ -23,9 +29,19 @@ export interface SearchResult {
 export class CompanyScraperService {
   private readonly logger = new Logger('CompanyScraper');
 
-  private dispatcher() {
-    const proxy = process.env.PROXY_URL;
-    return proxy ? new ProxyAgent(proxy) : undefined;
+  constructor(private readonly proxy: ProxyService) {}
+
+  get available(): boolean {
+    return this.proxy.configured;
+  }
+
+  // Auto-scraping requires a proxy; without one we fall back to manual entry.
+  private assertProxy() {
+    if (!this.proxy.configured) {
+      throw new ServiceUnavailableException(
+        'Recherche automatique indisponible : aucun proxy configuré.',
+      );
+    }
   }
 
   private async getHtml(url: string, timeoutMs = 20000): Promise<string> {
@@ -34,7 +50,7 @@ export class CompanyScraperService {
     try {
       const res = await undiciFetch(url, {
         headers: HEADERS,
-        dispatcher: this.dispatcher(),
+        dispatcher: this.proxy.dispatcher(),
         signal: controller.signal,
       });
       if (!res.ok) {
@@ -56,6 +72,7 @@ export class CompanyScraperService {
 
   // ── Search ──────────────────────────────────────────────────
   async search(query: string): Promise<SearchResult[]> {
+    this.assertProxy();
     const q = (query || '').trim();
     if (q.length < 2) throw new BadRequestException('Recherche trop courte.');
 
@@ -98,6 +115,7 @@ export class CompanyScraperService {
 
   // ── Company sheet ───────────────────────────────────────────
   async details(url: string): Promise<Record<string, any>> {
+    this.assertProxy();
     if (!/^https:\/\/www\.moneyhouse\.ch\/fr\//.test(url)) {
       throw new BadRequestException('Lien de fiche invalide.');
     }
@@ -313,6 +331,7 @@ export class CompanyScraperService {
 
   // ── uid.admin.ch (IDE registry) ─────────────────────────────
   async ide(uid: string): Promise<Record<string, any>> {
+    this.assertProxy();
     const clean = (uid || '').trim();
     if (!clean) throw new BadRequestException('IDE manquant.');
     const url = `https://www.uid.admin.ch/Detail.aspx?uid_id=${encodeURIComponent(clean)}&lang=fr`;

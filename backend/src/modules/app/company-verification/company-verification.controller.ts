@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ClientJwtGuard } from '../../../auth/guards/client-jwt.guard';
 import { CurrentCompany } from '../../../common/decorators/current-user.decorator';
@@ -12,6 +12,11 @@ import {
 @Controller('app/company-verification')
 export class CompanyVerificationController {
   constructor(private readonly service: CompanyVerificationService) {}
+
+  @Get('status')
+  status() {
+    return this.service.status();
+  }
 
   // Scraping is rate-limited to stay friendly with the proxy + sources.
   @Throttle({ default: { limit: 20, ttl: 60_000 } })

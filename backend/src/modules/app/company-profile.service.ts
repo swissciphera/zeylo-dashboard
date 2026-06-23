@@ -9,6 +9,8 @@ export class UpdateCompanyDto {
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() logoFileId?: string;
+  @IsOptional() @IsString() ideNumber?: string;
+  @IsOptional() @IsString() vatNumber?: string;
 }
 
 @Injectable()

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SmsService } from '../../integrations/sms.service';
 import { EmailService } from '../../integrations/email.service';
+import { ProxyService } from '../../integrations/proxy.service';
 
 @Injectable()
 export class SystemHealthService {
@@ -9,6 +10,7 @@ export class SystemHealthService {
     private readonly prisma: PrismaService,
     private readonly sms: SmsService,
     private readonly email: EmailService,
+    private readonly proxy: ProxyService,
   ) {}
 
   async status() {
@@ -21,6 +23,22 @@ export class SystemHealthService {
     } catch {
       dbOk = false;
     }
+
+    const proxyTest = await this.proxy.test();
+    const proxyService = {
+      key: 'proxy',
+      label: 'Proxy (scraping)',
+      status: !proxyTest.configured
+        ? 'mock'
+        : proxyTest.ok
+          ? 'operational'
+          : 'down',
+      detail: !proxyTest.configured
+        ? 'Aucun proxy configuré (recherche auto désactivée)'
+        : proxyTest.ok
+          ? `IP ${proxyTest.ip ?? '?'}${proxyTest.country ? ` · ${proxyTest.country}` : ''} · ${proxyTest.latencyMs} ms`
+          : `Échec : ${proxyTest.error ?? 'connexion impossible'}`,
+    };
 
     const services = [
       {
@@ -51,6 +69,7 @@ export class SystemHealthService {
         status: 'operational',
         detail: process.env.FILE_STORAGE_DIR ?? '/app/storage',
       },
+      proxyService,
     ];
 
     // Recent errors / technical alerts pulled from the audit log.

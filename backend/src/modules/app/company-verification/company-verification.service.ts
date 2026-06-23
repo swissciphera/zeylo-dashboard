@@ -18,6 +18,11 @@ export class CompanyVerificationService {
     private readonly scraper: CompanyScraperService,
   ) {}
 
+  // Tells the frontend whether automatic search is available (proxy present).
+  status() {
+    return { available: this.scraper.available };
+  }
+
   search(query: string) {
     return this.scraper.search(query);
   }
