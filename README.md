@@ -269,11 +269,61 @@ n'a **pas de certificat valide** pour le domaine client (Traefik n'a de cert
 que pour le domaine du dashboard). Trois solutions, du plus simple au plus
 automatique :
 
-**1. Sous-domaines de votre domaine (`*.ciphera.ch`) — recommandé**
-Émettez un **certificat wildcard `*.ciphera.ch`** sur l'origine via le
-challenge **DNS-01 Cloudflare** (Dokploy/Traefik : `certResolver` avec un token
-API Cloudflare). Tous les `*.ciphera.ch` sont alors couverts automatiquement,
-et Cloudflare Full (strict) passe. Aucune action par client.
+**1. Sous-domaines de votre domaine (`*.ciphera.ch`) — RECOMMANDÉ (Dokploy)**
+
+Solution robuste, **configurée une seule fois**, puis **zéro action par
+client** (l'app crée déjà le CNAME de chaque client via Cloudflare). Compatible
+**Full (strict)**.
+
+Étapes Dokploy/Traefik :
+
+1. **Token Cloudflare** (DNS-01) : crée un token API Cloudflare avec la
+   permission **Zone → DNS → Edit** sur la zone `ciphera.ch`.
+2. **Active le challenge DNS Cloudflare dans le Traefik de Dokploy.** Dans la
+   config du serveur Traefik (Dokploy → Web Server / Traefik), ajoute un
+   resolver DNS, par ex. dans `traefik.yml` :
+   ```yaml
+   certificatesResolvers:
+     cloudflare:
+       acme:
+         email: admin@ciphera.ch
+         storage: /etc/dokploy/traefik/dynamic/acme-dns.json
+         dnsChallenge:
+           provider: cloudflare
+           resolvers: ["1.1.1.1:53", "8.8.8.8:53"]
+   ```
+   et passe le token au conteneur Traefik (variables d'env) :
+   `CF_DNS_API_TOKEN=<ton_token>`.
+3. **Ajoute un fichier dynamique** `/etc/dokploy/traefik/dynamic/zeylo-wildcard.yml`
+   qui route tous les `*.ciphera.ch` vers le frontend et demande le cert
+   wildcard :
+   ```yaml
+   http:
+     routers:
+       zeylo-wildcard:
+         rule: "HostRegexp(`^.+\\.ciphera\\.ch$`)"
+         priority: 1
+         entryPoints: ["websecure"]
+         service: zeylo-frontend
+         tls:
+           certResolver: cloudflare
+           domains:
+             - main: "ciphera.ch"
+               sans: ["*.ciphera.ch"]
+     services:
+       zeylo-frontend:
+         loadBalancer:
+           servers:
+             - url: "http://<nom-conteneur-frontend>:80"
+   ```
+   Remplace `<nom-conteneur-frontend>` par le nom du conteneur frontend sur le
+   réseau Dokploy (`docker ps` → colonne NAMES). `priority: 1` (faible) laisse
+   les routes spécifiques de Dokploy (dont le dashboard) prioritaires.
+4. **Cloudflare** : mode SSL **Full (strict)** (réglé automatiquement par le
+   bouton « Configurer via Cloudflare »).
+
+Résultat : n'importe quel `<client>.ciphera.ch` est routé vers le dashboard et
+servi avec un certificat wildcard valide, **sans action par client**.
 
 **2. Domaines externes des clients — au cas par cas**
 Ajoutez le domaine au service `frontend` dans **Dokploy → Domains** : Traefik

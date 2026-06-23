@@ -253,20 +253,26 @@ export class DomainService {
         data: { linkDomainStatus: 'VERIFIED', linkDomainVerifiedAt: new Date() },
       });
       await this.event(companyId, 'success', `Domaine vérifié : ${domain} ✓`);
-      // Provision a real TLS certificate for this domain under the owner email.
-      const email = await this.ownerEmail(companyId);
-      await this.event(
-        companyId,
-        'info',
-        `Demande du certificat TLS (Let's Encrypt)…`,
-      );
-      const tls = await this.caddy.ensureDomain(domain, email);
-      await this.event(companyId, tls.ok ? 'success' : tls.skipped ? 'warn' : 'error', tls.detail);
-      if (tls.ok) {
+      if (this.caddy.enabled) {
+        // Caddy mode: provision a real cert per domain under the owner email.
+        const email = await this.ownerEmail(companyId);
+        await this.event(companyId, 'info', `Demande du certificat TLS (Let's Encrypt)…`);
+        const tls = await this.caddy.ensureDomain(domain, email);
+        await this.event(companyId, tls.ok ? 'success' : 'error', tls.detail);
+        if (tls.ok) {
+          await this.event(
+            companyId,
+            'success',
+            'Certificat en cours d’émission — actif sous peu. Liens et page publique prêts.',
+          );
+        }
+      } else {
+        // Platform mode (Dokploy/Traefik): TLS is covered by the wildcard /
+        // per-domain certificate configured on the reverse proxy.
         await this.event(
           companyId,
           'success',
-          'Certificat en cours d’émission — actif sous peu. Liens et page publique prêts.',
+          'SSL géré par la plateforme (Traefik + Cloudflare). Le certificat est couvert par la configuration wildcard du serveur.',
         );
       }
     }
