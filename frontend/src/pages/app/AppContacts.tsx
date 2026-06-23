@@ -11,6 +11,8 @@ import {
   User,
   Upload,
   X,
+  Search,
+  MapPin,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -20,7 +22,6 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Spinner } from '@/components/ui/LoadingState';
 import { ContactPhoto } from '@/components/ContactPhoto';
-import { CompanyAutocomplete } from '@/components/CompanyAutocomplete';
 import { clientApi, apiErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
@@ -248,7 +249,8 @@ function ContactFormModal({
   const [form, setForm] = useState<any>(
     contact ? { ...EMPTY, ...contact } : { ...EMPTY },
   );
-  const [companyQuery, setCompanyQuery] = useState(contact?.companyName ?? '');
+  const [results, setResults] = useState<any[] | null>(null);
+  const [searching, setSearching] = useState(false);
   const [importing, setImporting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -256,6 +258,24 @@ function ContactFormModal({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const set = (k: string) => (e: any) => setForm({ ...form, [k]: e.target.value });
+
+  // Manual search (only when the user clicks "Vérifier l'entreprise").
+  async function searchCompany() {
+    if (!form.companyName || form.companyName.trim().length < 2) return;
+    setSearching(true);
+    setError(null);
+    setResults(null);
+    try {
+      const res = await clientApi.post('/app/company-verification/search', {
+        query: form.companyName,
+      });
+      setResults(res.data);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setSearching(false);
+    }
+  }
 
   async function importCompany(url: string) {
     setImporting(true);
@@ -411,21 +431,64 @@ function ContactFormModal({
         {isEnterprise ? (
           <div>
             <label className="label">Nom de l'entreprise</label>
-            <CompanyAutocomplete
-              apiClient={clientApi}
-              basePath="/app/company-verification"
-              placeholder="Rechercher une entreprise…"
-              value={companyQuery}
-              onChange={(v) => {
-                setCompanyQuery(v);
-                setForm((f: any) => ({ ...f, companyName: v }));
-              }}
-              onPick={(r) => {
-                setCompanyQuery(r.nom);
-                setForm((f: any) => ({ ...f, companyName: r.nom }));
-                importCompany(r.lien);
-              }}
-            />
+            <div className="flex gap-2">
+              <input
+                className="input flex-1"
+                placeholder="Nom de l'entreprise"
+                value={form.companyName}
+                onChange={(e) => {
+                  setForm({ ...form, companyName: e.target.value });
+                  setResults(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchCompany();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="btn-secondary shrink-0"
+                onClick={searchCompany}
+                disabled={searching || !form.companyName}
+              >
+                {searching ? <Spinner className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+                Vérifier l'entreprise
+              </button>
+            </div>
+
+            {results && (
+              <div className="mt-2 max-h-64 overflow-auto rounded-xl border border-line bg-white p-1.5 shadow-card scrollbar-slim">
+                {results.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-ink-faint">Aucun résultat.</p>
+                ) : (
+                  results.map((r) => (
+                    <button
+                      key={r.lien}
+                      type="button"
+                      onClick={() => {
+                        setForm((f: any) => ({ ...f, companyName: r.nom }));
+                        setResults(null);
+                        importCompany(r.lien);
+                      }}
+                      className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-surface-muted"
+                    >
+                      <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-ink">{r.nom}</span>
+                        {r.adresse && (
+                          <span className="flex items-center gap-1 truncate text-xs text-ink-faint">
+                            <MapPin className="h-3 w-3" /> {r.adresse}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
             {importing && (
               <p className="mt-2 flex items-center gap-2 text-xs text-ink-muted">
                 <Spinner className="h-3.5 w-3.5" /> Import des données officielles…
