@@ -16,6 +16,7 @@ import { CompaniesAdminService } from './companies-admin.service';
 import {
   PlatformSettingsService,
   UpdateSettingsDto,
+  TestEmailDto,
 } from './platform-settings.service';
 import { PlatformMiscService } from './platform-misc.service';
 import { SystemHealthService } from './system-health.service';
@@ -89,5 +90,10 @@ export class PlatformController {
   @Put('settings')
   updateSettings(@Body() dto: UpdateSettingsDto) {
     return this.settings.update(dto);
+  }
+
+  @Post('settings/test-email')
+  testEmail(@Body() dto: TestEmailDto) {
+    return this.settings.sendTestEmail(dto.to);
   }
 }

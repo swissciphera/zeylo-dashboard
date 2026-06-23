@@ -471,5 +471,8 @@ model PlatformSettings {
   referralRewardMonths Int    @default(1)
   referralDiscountPercent Int @default(10)
   referralTiers      Json     @default("[{\"tier\":1,\"referrals\":1,\"rewardMonths\":1},{\"tier\":2,\"referrals\":3,\"rewardMonths\":3},{\"tier\":3,\"referrals\":5,\"rewardMonths\":6}]")
+  // Email (Resend) — editable template used for outgoing platform emails
+  emailSubject       String   @default("Bienvenue chez Zeylo")
+  emailTemplateHtml  String   @default("<div style=\"font-family:Inter,Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#0f172a\"><h1 style=\"color:#2563eb\">Zeylo</h1><p>Bonjour,</p><p>Ceci est un email de test envoyé depuis votre console Zeylo.</p><p>À bientôt,<br/>L'équipe Zeylo</p></div>")
   updatedAt          DateTime @updatedAt @default(now())
 }
