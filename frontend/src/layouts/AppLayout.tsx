@@ -6,6 +6,7 @@ import {
   HardHat,
   Contact,
   BadgeCheck,
+  CreditCard,
   Settings,
 } from 'lucide-react';
 import { Sidebar, NavItem } from '@/components/layout/Sidebar';
@@ -20,6 +21,7 @@ const NAV: NavItem[] = [
   { to: '/app/projects', label: 'Chantiers', icon: HardHat },
   { to: '/app/contacts', label: 'Contacts', icon: Contact },
   { to: '/app/verify', label: 'Vérification', icon: BadgeCheck },
+  { to: '/app/subscription', label: 'Abonnement', icon: CreditCard },
   { to: '/app/settings', label: 'Paramètres', icon: Settings },
 ];
 

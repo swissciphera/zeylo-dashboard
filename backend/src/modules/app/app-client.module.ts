@@ -7,6 +7,7 @@ import { EmployeesService } from './employees.service';
 import { ServicesService } from './services.service';
 import { ProjectsService } from './projects.service';
 import { ContactsService } from './contacts.service';
+import { SubscriptionService } from './subscription.service';
 
 @Module({
   imports: [AuthModule], // ProjectsService uses TokenService for SMS code hashing
@@ -18,6 +19,7 @@ import { ContactsService } from './contacts.service';
     ServicesService,
     ProjectsService,
     ContactsService,
+    SubscriptionService,
   ],
 })
 export class AppClientModule {}

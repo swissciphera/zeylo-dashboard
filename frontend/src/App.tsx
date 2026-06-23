@@ -27,6 +27,7 @@ import { AppProjects } from '@/pages/app/AppProjects';
 import { AppProjectDetail } from '@/pages/app/AppProjectDetail';
 import { AppContacts } from '@/pages/app/AppContacts';
 import { AppVerify } from '@/pages/app/AppVerify';
+import { AppSubscription } from '@/pages/app/AppSubscription';
 import { AppSettings } from '@/pages/app/AppSettings';
 
 // Public pages
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="projects/:id" element={<AppProjectDetail />} />
         <Route path="contacts" element={<AppContacts />} />
         <Route path="verify" element={<AppVerify />} />
+        <Route path="subscription" element={<AppSubscription />} />
         <Route path="settings" element={<AppSettings />} />
       </Route>
 

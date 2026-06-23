@@ -41,6 +41,7 @@ import {
   CreateContactDto,
   UpdateContactDto,
 } from './contacts.service';
+import { SubscriptionService } from './subscription.service';
 
 // All tenant endpoints live under /api/app and are scoped to the caller's company.
 @UseGuards(ClientJwtGuard)
@@ -53,7 +54,34 @@ export class AppClientController {
     private readonly services: ServicesService,
     private readonly projects: ProjectsService,
     private readonly contacts: ContactsService,
+    private readonly subscription: SubscriptionService,
   ) {}
+
+  // ── Subscription ────────────────────────────────────────────
+  @Get('subscription')
+  getSubscription(@CurrentCompany() companyId: string) {
+    return this.subscription.get(companyId);
+  }
+
+  @Post('subscription/free')
+  selectFree(@CurrentCompany() companyId: string) {
+    return this.subscription.selectFree(companyId);
+  }
+
+  @Post('subscription/trial')
+  startTrial(@CurrentCompany() companyId: string) {
+    return this.subscription.startTrial(companyId);
+  }
+
+  @Post('subscription/upgrade')
+  upgrade(@CurrentCompany() companyId: string) {
+    return this.subscription.upgrade(companyId);
+  }
+
+  @Post('subscription/cancel')
+  cancelSubscription(@CurrentCompany() companyId: string) {
+    return this.subscription.cancel(companyId);
+  }
 
   // ── Dashboard ───────────────────────────────────────────────
   @Get('dashboard')
