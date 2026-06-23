@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { AuthShell } from '@/components/layout/AuthShell';
 import { Spinner } from '@/components/ui/LoadingState';
@@ -8,17 +8,26 @@ import { adminApi, apiErrorMessage } from '@/lib/api';
 
 export function AdminSetup() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+  });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // First-run gate: if an admin already exists, the setup page is locked.
+  // Always read fresh (no stale cache) so the gate reacts immediately.
   const { data, isLoading } = useQuery({
     queryKey: ['setup-status'],
     queryFn: async () =>
       (await adminApi.get('/admin/setup/status')).data as {
         needsSetup: boolean;
       },
+    staleTime: 0,
+    gcTime: 0,
   });
 
   useEffect(() => {
@@ -30,7 +39,13 @@ export function AdminSetup() {
     setError(null);
     setSubmitting(true);
     try {
-      await adminApi.post('/admin/setup', form);
+      await adminApi.post('/admin/setup', {
+        name: `${form.firstName} ${form.lastName}`.trim(),
+        email: form.email,
+        password: form.password,
+      });
+      // Refresh the first-run gate so /admin/login no longer redirects here.
+      await queryClient.invalidateQueries({ queryKey: ['setup-status'] });
       navigate('/admin/login', { replace: true });
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -63,15 +78,27 @@ export function AdminSetup() {
       </div>
 
       <form onSubmit={submit} className="space-y-4">
-        <div>
-          <label className="label">Nom complet</label>
-          <input
-            className="input"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Jean Dupont"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Prénom</label>
+            <input
+              className="input"
+              required
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              placeholder="Jean"
+            />
+          </div>
+          <div>
+            <label className="label">Nom</label>
+            <input
+              className="input"
+              required
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              placeholder="Dupont"
+            />
+          </div>
         </div>
         <div>
           <label className="label">Email</label>

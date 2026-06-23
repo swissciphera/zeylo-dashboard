@@ -21,6 +21,8 @@ export function AdminLogin() {
       (await adminApi.get('/admin/setup/status')).data as {
         needsSetup: boolean;
       },
+    staleTime: 0,
+    gcTime: 0,
   });
 
   useEffect(() => {
