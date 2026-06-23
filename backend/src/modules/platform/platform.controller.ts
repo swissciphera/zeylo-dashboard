@@ -36,6 +36,7 @@ import {
   CreateUserDto,
   UpdateUserDto,
 } from './users-admin.service';
+import { IpLookupService } from '../../integrations/ip-lookup.service';
 
 // All platform/admin endpoints live under /api/admin and require an admin token.
 @UseGuards(AdminJwtGuard)
@@ -50,7 +51,14 @@ export class PlatformController {
     private readonly support: SupportAccessService,
     private readonly emailTemplates: EmailTemplatesService,
     private readonly users: UsersAdminService,
+    private readonly ipLookup: IpLookupService,
   ) {}
+
+  // ── IP geolocation ──────────────────────────────────────────
+  @Get('ip-lookup')
+  lookupIp(@Query('ip') ip: string) {
+    return this.ipLookup.lookup(ip);
+  }
 
   // ── Users (client/patron accounts) ──────────────────────────
   @Get('users')

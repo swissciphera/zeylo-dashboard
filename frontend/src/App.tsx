@@ -12,6 +12,7 @@ import { AdminCompanyDetail } from '@/pages/admin/AdminCompanyDetail';
 import { AdminBilling } from '@/pages/admin/AdminBilling';
 import { AdminReferrals } from '@/pages/admin/AdminReferrals';
 import { AdminAudit } from '@/pages/admin/AdminAudit';
+import { AdminIpLookup } from '@/pages/admin/AdminIpLookup';
 import { AdminSystem } from '@/pages/admin/AdminSystem';
 import { AdminSettings } from '@/pages/admin/AdminSettings';
 
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="billing" element={<AdminBilling />} />
         <Route path="referrals" element={<AdminReferrals />} />
         <Route path="audit" element={<AdminAudit />} />
+        <Route path="ip-lookup" element={<AdminIpLookup />} />
         <Route path="system" element={<AdminSystem />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>

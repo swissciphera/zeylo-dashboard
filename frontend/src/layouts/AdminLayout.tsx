@@ -7,6 +7,7 @@ import {
   ScrollText,
   Activity,
   Settings,
+  MapPin,
 } from 'lucide-react';
 import { Sidebar, NavItem } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
@@ -19,6 +20,7 @@ const NAV: NavItem[] = [
   { to: '/admin/billing', label: 'Facturation', icon: CreditCard },
   { to: '/admin/referrals', label: 'Parrainage', icon: Gift },
   { to: '/admin/audit', label: "Journal d'audit", icon: ScrollText },
+  { to: '/admin/ip-lookup', label: 'Localiser IP', icon: MapPin },
   { to: '/admin/system', label: 'Santé système', icon: Activity },
   { to: '/admin/settings', label: 'Paramètres', icon: Settings },
 ];

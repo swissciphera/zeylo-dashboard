@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
@@ -49,7 +51,22 @@ export function AdminAudit() {
         </span>
       ),
     },
-    { key: 'ip', header: 'IP', render: (r) => <span className="text-xs text-ink-faint">{r.ip || '—'}</span> },
+    {
+      key: 'ip',
+      header: 'IP',
+      render: (r) =>
+        r.ip ? (
+          <Link
+            to={`/admin/ip-lookup?ip=${encodeURIComponent(r.ip)}`}
+            className="inline-flex items-center gap-1 font-mono text-xs text-brand-600 hover:text-brand-700 hover:underline"
+            title="Localiser cette IP"
+          >
+            <MapPin className="h-3.5 w-3.5" /> {r.ip}
+          </Link>
+        ) : (
+          <span className="text-xs text-ink-faint">—</span>
+        ),
+    },
   ];
 
   return (
