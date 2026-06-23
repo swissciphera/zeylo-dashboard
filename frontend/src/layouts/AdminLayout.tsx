@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Sidebar, NavItem } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
+import { CipheraWordmark, CipheraIcon } from '@/components/branding/CipheraLogo';
 import { useAdminAuth } from '@/stores/auth';
 import { adminApi } from '@/lib/api';
 
@@ -43,7 +44,12 @@ export function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-surface-subtle">
-      <Sidebar items={NAV} badge="Plateforme" />
+      <Sidebar
+        items={NAV}
+        badge="Plateforme"
+        logoFull={<CipheraWordmark className="h-6 w-auto" />}
+        logoIcon={<CipheraIcon className="h-5 w-5 text-white" />}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           userName={user?.name}

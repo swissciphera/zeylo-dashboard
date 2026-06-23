@@ -13,9 +13,15 @@ export interface NavItem {
 export function Sidebar({
   items,
   badge,
+  logoFull,
+  logoIcon,
 }: {
   items: NavItem[];
   badge: string; // small label under the logo, e.g. "Plateforme" / "Espace pro"
+  // Optional custom branding (e.g. admin platform). When provided, replaces
+  // the default Zeylo mark + badge.
+  logoFull?: React.ReactNode;
+  logoIcon?: React.ReactNode;
 }) {
   const { sidebarCollapsed, toggleSidebar } = useUi();
 
@@ -33,20 +39,32 @@ export function Sidebar({
           sidebarCollapsed && 'justify-center px-0',
         )}
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-          <svg viewBox="0 0 32 32" className="h-5 w-5 fill-current">
-            <path d="M9 9h14l-9 8h9v6H9l9-8H9z" />
-          </svg>
-        </div>
-        {!sidebarCollapsed && (
-          <div className="leading-tight">
-            <div className="text-[15px] font-bold tracking-tight text-ink">
-              Zeylo
+        {logoFull || logoIcon ? (
+          sidebarCollapsed ? (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+              {logoIcon}
             </div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-              {badge}
+          ) : (
+            <div className="flex items-center text-ink">{logoFull}</div>
+          )
+        ) : (
+          <>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+              <svg viewBox="0 0 32 32" className="h-5 w-5 fill-current">
+                <path d="M9 9h14l-9 8h9v6H9l9-8H9z" />
+              </svg>
             </div>
-          </div>
+            {!sidebarCollapsed && (
+              <div className="leading-tight">
+                <div className="text-[15px] font-bold tracking-tight text-ink">
+                  Zeylo
+                </div>
+                <div className="text-[11px] font-medium uppercase tracking-wider text-ink-faint">
+                  {badge}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
