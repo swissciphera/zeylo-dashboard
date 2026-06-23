@@ -6,5 +6,6 @@ import { CompanyScraperService } from './company-scraper.service';
 @Module({
   controllers: [CompanyVerificationController],
   providers: [CompanyVerificationService, CompanyScraperService],
+  exports: [CompanyScraperService],
 })
 export class CompanyVerificationModule {}

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthShell } from '@/components/layout/AuthShell';
 import { Spinner } from '@/components/ui/LoadingState';
-import { clientApi, apiErrorMessage } from '@/lib/api';
+import { CompanyAutocomplete } from '@/components/CompanyAutocomplete';
+import { clientApi, publicApi, apiErrorMessage } from '@/lib/api';
 import { useClientAuth } from '@/stores/auth';
 
 export function ClientRegister() {
@@ -51,12 +52,28 @@ export function ClientRegister() {
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="label">Nom de l’entreprise</label>
-            <input
-              className="input"
+            <CompanyAutocomplete
+              apiClient={publicApi}
+              basePath="/public/company"
               required
-              value={form.companyName}
-              onChange={(e) => setForm({ ...form, companyName: e.target.value })}
               placeholder="Ex. NetClean Sàrl"
+              value={form.companyName}
+              onChange={(v) => setForm((f) => ({ ...f, companyName: v }))}
+              onPick={async (r) => {
+                // Prefill sector from the official sheet when possible.
+                try {
+                  const res = await publicApi.post('/public/company/details', {
+                    url: r.lien,
+                  });
+                  setForm((f) => ({
+                    ...f,
+                    companyName: res.data?.company_name || r.nom,
+                    sector: res.data?.sector || f.sector,
+                  }));
+                } catch {
+                  /* keep typed value */
+                }
+              }}
             />
           </div>
           <div className="col-span-2">

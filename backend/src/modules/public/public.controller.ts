@@ -4,6 +4,8 @@ import {
   PublicService,
   VerifyAccessDto,
   SubmitRatingDto,
+  PublicCompanySearchDto,
+  PublicCompanyUrlDto,
 } from './public.service';
 
 // Token-based public endpoints — no authentication, rate-limited.
@@ -26,6 +28,26 @@ export class PublicController {
   @Get('rate/:token')
   ratingInfo(@Param('token') token: string) {
     return this.publicService.ratingInfo(token);
+  }
+
+  // ── Public company lookup (signup autocomplete) ─────────────
+  @Get('company/status')
+  companyStatus() {
+    return this.publicService.companyStatus();
+  }
+
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('company/search')
+  companySearch(@Body() dto: PublicCompanySearchDto) {
+    return this.publicService.companySearch(dto.query);
+  }
+
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('company/details')
+  companyDetails(@Body() dto: PublicCompanyUrlDto) {
+    return this.publicService.companyDetails(dto.url);
   }
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

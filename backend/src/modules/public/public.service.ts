@@ -3,9 +3,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../../auth/token.service';
+import { CompanyScraperService } from '../app/company-verification/company-scraper.service';
 
 export class VerifyAccessDto {
   @IsString() code!: string;
@@ -16,9 +24,33 @@ export class SubmitRatingDto {
   @IsOptional() @IsString() comment?: string;
 }
 
+export class PublicCompanySearchDto {
+  @IsString() @MinLength(2) query!: string;
+}
+
+export class PublicCompanyUrlDto {
+  @IsString() @MinLength(8) url!: string;
+}
+
 @Injectable()
 export class PublicService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scraper: CompanyScraperService,
+  ) {}
+
+  // ── Public company lookup (used during signup) ──────────────
+  companyStatus() {
+    return { available: this.scraper.available };
+  }
+
+  companySearch(query: string) {
+    return this.scraper.search(query);
+  }
+
+  companyDetails(url: string) {
+    return this.scraper.details(url);
+  }
 
   // ── Temporary employee access (link + SMS code) ─────────────
   async accessInfo(token: string) {
