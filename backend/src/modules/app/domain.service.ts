@@ -331,11 +331,40 @@ export class DomainService {
     });
     await this.event(companyId, 'success', 'Enregistrements DNS créés sur Cloudflare (CNAME + TXT).');
 
+    // Auto-configure the zone SSL so it works out of the box.
+    // - With Caddy origin certs available → Full (strict).
+    // - Otherwise → Full (accepts the origin cert, removes error 526).
+    const sslMode = this.caddy.enabled ? 'strict' : 'full';
+    await this.setZoneSetting(zone.id, headers, 'ssl', sslMode);
+    await this.setZoneSetting(zone.id, headers, 'always_use_https', 'on');
+    await this.event(
+      companyId,
+      'success',
+      `SSL Cloudflare réglé sur « ${sslMode === 'strict' ? 'Full (strict)' : 'Full'} » + HTTPS forcé.`,
+    );
+
     // DNS may take a moment to propagate; attempt verification right away.
     try {
       return await this.verify(companyId);
     } catch {
       return { verified: false, cnameOk: false, txtOk: false, ...(await this.get(companyId)) };
+    }
+  }
+
+  // Set a Cloudflare zone setting (e.g. ssl=full/strict, always_use_https=on).
+  private async setZoneSetting(
+    zoneId: string,
+    headers: Record<string, string>,
+    key: string,
+    value: string,
+  ) {
+    try {
+      await fetch(
+        `https://api.cloudflare.com/client/v4/zones/${zoneId}/settings/${key}`,
+        { method: 'PATCH', headers, body: JSON.stringify({ value }) },
+      );
+    } catch (e: any) {
+      this.logger.warn(`CF setting ${key}: ${e?.message}`);
     }
   }
 
