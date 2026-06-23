@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { LucideIcon, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { useUi } from '@/stores/ui';
 
@@ -10,6 +11,18 @@ export interface NavItem {
   end?: boolean;
 }
 
+// Smooth collapse: width springs, labels fade + slide via AnimatePresence.
+const WIDTH = { expanded: 256, collapsed: 76 };
+const widthTransition = { type: 'spring', stiffness: 320, damping: 34, mass: 0.9 } as const;
+const labelTransition = { duration: 0.18, ease: [0.4, 0, 0.2, 1] } as const;
+
+const labelMotion = {
+  initial: { opacity: 0, width: 0, marginLeft: 0 },
+  animate: { opacity: 1, width: 'auto', marginLeft: 0 },
+  exit: { opacity: 0, width: 0, marginLeft: 0 },
+  transition: labelTransition,
+};
+
 export function Sidebar({
   items,
   badge,
@@ -17,20 +30,19 @@ export function Sidebar({
   logoIcon,
 }: {
   items: NavItem[];
-  badge: string; // small label under the logo, e.g. "Plateforme" / "Espace pro"
-  // Optional custom branding (e.g. admin platform). When provided, replaces
-  // the default Zeylo mark + badge.
+  badge: string;
   logoFull?: React.ReactNode;
   logoIcon?: React.ReactNode;
 }) {
   const { sidebarCollapsed, toggleSidebar } = useUi();
+  const customLogo = Boolean(logoFull || logoIcon);
 
   return (
-    <aside
-      className={cn(
-        'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-line bg-white transition-all duration-300 lg:flex',
-        sidebarCollapsed ? 'w-[76px]' : 'w-64',
-      )}
+    <motion.aside
+      initial={false}
+      animate={{ width: sidebarCollapsed ? WIDTH.collapsed : WIDTH.expanded }}
+      transition={widthTransition}
+      className="sticky top-0 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-line bg-white lg:flex"
     >
       {/* Brand */}
       <div
@@ -39,14 +51,32 @@ export function Sidebar({
           sidebarCollapsed && 'justify-center px-0',
         )}
       >
-        {logoFull || logoIcon ? (
-          sidebarCollapsed ? (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-              {logoIcon}
-            </div>
-          ) : (
-            <div className="flex items-center text-ink">{logoFull}</div>
-          )
+        {customLogo ? (
+          <AnimatePresence initial={false} mode="wait">
+            {sidebarCollapsed ? (
+              <motion.div
+                key="logo-icon"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={labelTransition}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm"
+              >
+                {logoIcon}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="logo-full"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={labelTransition}
+                className="flex items-center overflow-hidden text-ink"
+              >
+                {logoFull}
+              </motion.div>
+            )}
+          </AnimatePresence>
         ) : (
           <>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
@@ -54,22 +84,24 @@ export function Sidebar({
                 <path d="M9 9h14l-9 8h9v6H9l9-8H9z" />
               </svg>
             </div>
-            {!sidebarCollapsed && (
-              <div className="leading-tight">
-                <div className="text-[15px] font-bold tracking-tight text-ink">
-                  Zeylo
-                </div>
-                <div className="text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-                  {badge}
-                </div>
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {!sidebarCollapsed && (
+                <motion.div {...labelMotion} className="overflow-hidden leading-tight">
+                  <div className="whitespace-nowrap text-[15px] font-bold tracking-tight text-ink">
+                    Zeylo
+                  </div>
+                  <div className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wider text-ink-faint">
+                    {badge}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-slim">
+      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4 scrollbar-slim">
         {items.map((item) => (
           <NavLink
             key={item.to}
@@ -78,7 +110,7 @@ export function Sidebar({
             title={sidebarCollapsed ? item.label : undefined}
             className={({ isActive }) =>
               cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
+                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                 sidebarCollapsed && 'justify-center px-0',
                 isActive
                   ? 'bg-brand-50 text-brand-700'
@@ -94,7 +126,13 @@ export function Sidebar({
                     isActive ? 'text-brand-600' : 'text-ink-faint group-hover:text-ink-soft',
                   )}
                 />
-                {!sidebarCollapsed && <span>{item.label}</span>}
+                <AnimatePresence initial={false}>
+                  {!sidebarCollapsed && (
+                    <motion.span {...labelMotion} className="overflow-hidden whitespace-nowrap">
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </>
             )}
           </NavLink>
@@ -106,20 +144,30 @@ export function Sidebar({
         <button
           onClick={toggleSidebar}
           className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface-muted hover:text-ink',
+            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink',
             sidebarCollapsed && 'justify-center px-0',
           )}
         >
-          {sidebarCollapsed ? (
-            <PanelLeft className="h-[18px] w-[18px]" />
-          ) : (
-            <>
+          <motion.span
+            animate={{ rotate: sidebarCollapsed ? 180 : 0 }}
+            transition={labelTransition}
+            className="shrink-0"
+          >
+            {sidebarCollapsed ? (
+              <PanelLeft className="h-[18px] w-[18px]" />
+            ) : (
               <PanelLeftClose className="h-[18px] w-[18px]" />
-              <span>Réduire</span>
-            </>
-          )}
+            )}
+          </motion.span>
+          <AnimatePresence initial={false}>
+            {!sidebarCollapsed && (
+              <motion.span {...labelMotion} className="overflow-hidden whitespace-nowrap">
+                Réduire
+              </motion.span>
+            )}
+          </AnimatePresence>
         </button>
       </div>
-    </aside>
+    </motion.aside>
   );
 }
