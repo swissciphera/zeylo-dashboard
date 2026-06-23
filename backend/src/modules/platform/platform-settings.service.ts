@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   IsArray,
@@ -19,8 +19,21 @@ export class UpdateSettingsDto {
 }
 
 @Injectable()
-export class PlatformSettingsService {
+export class PlatformSettingsService implements OnModuleInit {
+  private readonly logger = new Logger('PlatformSettings');
+
   constructor(private readonly prisma: PrismaService) {}
+
+  // Ensure the singleton settings row exists on boot (replaces the seed step).
+  async onModuleInit() {
+    try {
+      await this.get();
+    } catch (e) {
+      this.logger.warn(
+        `Could not ensure platform settings on boot: ${(e as Error).message}`,
+      );
+    }
+  }
 
   async get() {
     return this.prisma.platformSettings.upsert({

@@ -68,9 +68,11 @@ services:
       - backend
     networks:
       - zeylo
-    # Exposed for Dokploy to attach the domain to this container's port 80.
-    ports:
-      - "${FRONTEND_PORT:-8080}:80"
+    # No host port published (avoids conflicts with other Dokploy apps).
+    # Dokploy/Traefik attaches the domain to this container's port 80 over the
+    # internal network.
+    expose:
+      - "80"
 
 volumes:
   postgres_data:
