@@ -52,6 +52,41 @@ export class PublicService {
     return this.scraper.details(url);
   }
 
+  // ── Public company page (served on the connected domain root) ─
+  async companyPage(host?: string, id?: string) {
+    let company: any = null;
+    if (host) {
+      company = await this.prisma.company.findFirst({
+        where: {
+          linkDomain: host.toLowerCase().replace(/^www\./, ''),
+          linkDomainStatus: 'VERIFIED',
+        },
+      });
+    } else if (id) {
+      company = await this.prisma.company.findUnique({ where: { id } });
+    }
+    if (!company) throw new NotFoundException('Page introuvable.');
+
+    const rd: any = company.registryData || {};
+    return {
+      name: company.name,
+      sector: company.sector,
+      website: company.website,
+      email: company.email,
+      phone: company.phone,
+      address: {
+        line: company.address,
+        postalCode: company.postalCode,
+        city: company.city,
+      },
+      ideNumber: company.ideNumber,
+      vatNumber: company.vatNumber,
+      description: rd.purpose || null,
+      directors: Array.isArray(rd.directors) ? rd.directors : [],
+      verified: Boolean(company.verifiedAt),
+    };
+  }
+
   // ── Temporary employee access (link + SMS code) ─────────────
   async accessInfo(token: string) {
     const access = await this.prisma.projectTempAccess.findUnique({

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   PublicService,
@@ -34,6 +34,12 @@ export class PublicController {
   @Get('company/status')
   companyStatus() {
     return this.publicService.companyStatus();
+  }
+
+  // Public company "about" page (resolved by connected domain host, or by id)
+  @Get('company-page')
+  companyPage(@Query('host') host?: string, @Query('id') id?: string) {
+    return this.publicService.companyPage(host, id);
   }
 
   @Throttle({ default: { limit: 15, ttl: 60_000 } })

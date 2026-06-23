@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CompanyAutocomplete } from '@/components/CompanyAutocomplete';
 import { clientApi, apiErrorMessage } from '@/lib/api';
+import { useClientAuth } from '@/stores/auth';
 import { formatDate } from '@/lib/format';
 
 export function AppSettings() {
@@ -390,6 +391,7 @@ function DnsStatus({ ok }: { ok?: boolean }) {
 
 function DomainTab() {
   const qc = useQueryClient();
+  const companyId = useClientAuth((s) => s.user?.companyId);
   const { data, isLoading } = useQuery({
     queryKey: ['domain'],
     queryFn: async () => (await clientApi.get('/app/domain')).data,
@@ -483,6 +485,20 @@ function DomainTab() {
         </div>
       </div>
 
+      {/* Public page preview */}
+      {companyId && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-white p-4 shadow-card">
+          <div className="flex items-center gap-2 text-sm text-ink-soft">
+            <Globe className="h-4 w-4 text-brand-600" />
+            Une page « à propos » de votre entreprise est générée
+            automatiquement.
+          </div>
+          <a href={`/page/${companyId}`} target="_blank" rel="noreferrer" className="btn-secondary !py-1.5">
+            Aperçu de la page publique
+          </a>
+        </div>
+      )}
+
       {status === 'VERIFIED' ? (
         <div className="card p-6">
           <div className="flex items-center gap-2">
@@ -499,8 +515,24 @@ function DomainTab() {
               </p>
             </div>
           </div>
-          <div className="mt-4 rounded-xl bg-surface-subtle p-3 text-sm text-ink-soft">
-            Exemple : <span className="font-mono">https://{data.domain}/access/…</span>
+          <div className="mt-4 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface-subtle p-3 text-sm">
+              <span className="text-ink-soft">
+                Page publique :{' '}
+                <span className="font-mono">https://{data.domain}/</span>
+              </span>
+              <a
+                href={`https://${data.domain}/`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-secondary !py-1.5"
+              >
+                <Globe className="h-4 w-4" /> Ouvrir
+              </a>
+            </div>
+            <div className="rounded-xl bg-surface-subtle p-3 text-sm text-ink-soft">
+              Liens à votre marque : <span className="font-mono">https://{data.domain}/access/…</span>
+            </div>
           </div>
           <button className="btn-ghost mt-4 text-red-600 hover:bg-red-50" onClick={removeDomain} disabled={busy !== null}>
             <Trash2 className="h-4 w-4" /> Déconnecter le domaine

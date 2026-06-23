@@ -33,12 +33,15 @@ import { AppSettings } from '@/pages/app/AppSettings';
 // Public pages
 import { TempAccessPage } from '@/pages/public/TempAccessPage';
 import { RatingPage } from '@/pages/public/RatingPage';
+import { RootGate, CompanyPublicPage } from '@/pages/public/CompanyPublic';
 import { NotFound } from '@/pages/NotFound';
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/app" replace />} />
+      {/* Root: company public page on a connected domain, else the app */}
+      <Route path="/" element={<RootGate />} />
+      <Route path="/page/:id" element={<CompanyPublicPage />} />
 
       {/* Admin auth / setup */}
       <Route path="/admin/setup" element={<AdminSetup />} />
