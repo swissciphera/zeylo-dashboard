@@ -13,6 +13,7 @@ import {
   X,
   Search,
   MapPin,
+  Minus,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -35,6 +36,18 @@ const TYPE_TONE: Record<string, any> = {
   CLIENT: 'green',
   FORMER_CLIENT: 'gray',
 };
+
+// Subtle placeholder shown when a cell has no value.
+function EmptyCell({ title }: { title?: string }) {
+  return (
+    <span
+      title={title ?? 'Non renseigné'}
+      className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-surface-muted text-ink-faint"
+    >
+      <Minus className="h-3.5 w-3.5" />
+    </span>
+  );
+}
 
 interface Contact {
   id: string;
@@ -123,14 +136,17 @@ export function AppContacts() {
         <div className="space-y-0.5 text-xs text-ink-muted">
           {c.email && <div className="flex items-center gap-1"><Mail className="h-3 w-3" /> {c.email}</div>}
           {c.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {c.phone}</div>}
-          {!c.email && !c.phone && '—'}
+          {!c.email && !c.phone && <EmptyCell title="Aucune coordonnée" />}
         </div>
       ),
     },
     {
       key: 'city',
       header: 'Localité',
-      render: (c) => [c.postalCode, c.city].filter(Boolean).join(' ') || '—',
+      render: (c) => {
+        const loc = [c.postalCode, c.city].filter(Boolean).join(' ');
+        return loc || <EmptyCell title="Localité non renseignée" />;
+      },
     },
     {
       key: 'actions',
