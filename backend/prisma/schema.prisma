@@ -164,6 +164,11 @@ model Company {
   trialEndsAt        DateTime?
   // Referral program
   referralCode       String             @unique
+  // Official registry verification (scraped from Moneyhouse / uid.admin.ch)
+  ideNumber          String?
+  vatNumber          String?
+  registryData       Json?
+  verifiedAt         DateTime?
   referredById       String?
   referredBy         Company?           @relation("CompanyReferrals", fields: [referredById], references: [id])
   referrals          Company[]          @relation("CompanyReferrals")

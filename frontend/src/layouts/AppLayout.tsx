@@ -5,6 +5,7 @@ import {
   Wrench,
   HardHat,
   Contact,
+  BadgeCheck,
   Settings,
 } from 'lucide-react';
 import { Sidebar, NavItem } from '@/components/layout/Sidebar';
@@ -18,6 +19,7 @@ const NAV: NavItem[] = [
   { to: '/app/services', label: 'Services', icon: Wrench },
   { to: '/app/projects', label: 'Chantiers', icon: HardHat },
   { to: '/app/contacts', label: 'Contacts', icon: Contact },
+  { to: '/app/verify', label: 'Vérification', icon: BadgeCheck },
   { to: '/app/settings', label: 'Paramètres', icon: Settings },
 ];
 

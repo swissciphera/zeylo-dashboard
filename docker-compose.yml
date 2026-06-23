@@ -50,6 +50,7 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
       PROXYCHECK_API_KEY: ${PROXYCHECK_API_KEY}
+      PROXY_URL: ${PROXY_URL}
     volumes:
       - file_storage:/app/storage
     networks:

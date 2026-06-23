@@ -8,6 +8,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { AuthModule } from './auth/auth.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { AppClientModule } from './modules/app/app-client.module';
+import { CompanyVerificationModule } from './modules/app/company-verification/company-verification.module';
 import { FilesModule } from './modules/files/files.module';
 import { PublicModule } from './modules/public/public.module';
 import { HealthController } from './health.controller';
@@ -24,6 +25,7 @@ import { HealthController } from './health.controller';
     AuthModule,
     PlatformModule,
     AppClientModule,
+    CompanyVerificationModule,
     FilesModule,
     PublicModule,
   ],
