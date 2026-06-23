@@ -23,9 +23,13 @@ interface GeoResult {
   asName?: string | null;
   hostname?: string | null;
   proxy?: boolean;
+  vpn?: boolean;
+  tor?: boolean;
   hosting?: boolean;
   mobile?: boolean;
   type?: string;
+  proxyProvider?: string | null;
+  risk?: number | null;
 }
 
 function flagEmoji(cc?: string) {
@@ -182,23 +186,79 @@ export function AdminIpLookup() {
               ) : (
                 <ShieldCheck className="h-9 w-9 shrink-0 text-emerald-500" />
               )}
-              <div>
+              <div className="min-w-0">
                 <div className="text-sm font-semibold text-ink">
-                  {result.proxy ? 'VPN / Proxy détecté' : 'Aucun proxy détecté'}
+                  {result.tor
+                    ? 'Réseau Tor détecté'
+                    : result.vpn
+                      ? 'VPN détecté'
+                      : result.proxy
+                        ? 'Proxy détecté'
+                        : 'Aucun proxy détecté'}
                 </div>
-                <div className="text-xs text-ink-muted">{result.type}</div>
+                <div className="truncate text-xs text-ink-muted">
+                  {result.proxyProvider
+                    ? `${result.type} · ${result.proxyProvider}`
+                    : result.type}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Risk meter */}
+          {result.risk != null && (
+            <div className="card p-5">
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span className="font-semibold text-ink">Score de risque</span>
+                <span
+                  className={cn(
+                    'font-bold',
+                    result.risk >= 67
+                      ? 'text-red-600'
+                      : result.risk >= 34
+                        ? 'text-amber-600'
+                        : 'text-emerald-600',
+                  )}
+                >
+                  {result.risk}/100
+                </span>
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-surface-muted">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    result.risk >= 67
+                      ? 'bg-red-500'
+                      : result.risk >= 34
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500',
+                  )}
+                  style={{ width: `${Math.max(result.risk, 3)}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-ink-faint">
+                {result.risk >= 67
+                  ? 'Risque élevé — IP fréquemment associée à des abus.'
+                  : result.risk >= 34
+                    ? 'Risque modéré.'
+                    : 'Risque faible.'}
+              </p>
+            </div>
+          )}
 
           {/* Details grid */}
           <div className="card grid grid-cols-2 gap-px overflow-hidden bg-line sm:grid-cols-3">
             <Tile label="Pays" value={`${flagEmoji(result.countryCode)} ${result.country ?? '—'}`} />
             <Tile label="Région" value={result.region} />
             <Tile label="Ville" value={result.city} />
-            <Tile label="Fournisseur" value={result.isp} />
+            <Tile label="Fournisseur réseau" value={result.isp} />
             <Tile label="ASN" value={result.asn} />
             <Tile label="Type" value={result.type} highlight={result.proxy} />
+            <Tile
+              label="Fournisseur VPN / Proxy"
+              value={result.proxyProvider}
+              highlight={!!result.proxyProvider}
+            />
             <Tile label="Hostname" value={result.hostname} mono />
             <Tile label="Fuseau horaire" value={result.timezone} />
             <Tile
@@ -206,6 +266,8 @@ export function AdminIpLookup() {
               value={result.proxy ? 'Oui' : 'Non'}
               badge={result.proxy ? 'red' : 'green'}
             />
+            <Tile label="Tor" value={result.tor ? 'Oui' : 'Non'} badge={result.tor ? 'red' : 'green'} />
+            <Tile label="Mobile" value={result.mobile ? 'Oui' : 'Non'} />
           </div>
         </div>
       )}

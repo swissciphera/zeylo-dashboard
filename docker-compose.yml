@@ -49,6 +49,7 @@ services:
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      PROXYCHECK_API_KEY: ${PROXYCHECK_API_KEY}
     volumes:
       - file_storage:/app/storage
     networks:
