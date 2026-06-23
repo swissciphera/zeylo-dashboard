@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Save, Gift, Copy, CheckCircle2, XCircle, BadgeCheck } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Save, Gift, Copy, CheckCircle2, XCircle, BadgeCheck, ShieldCheck, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LoadingState, Spinner } from '@/components/ui/LoadingState';
 import { Tabs } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CompanyAutocomplete } from '@/components/CompanyAutocomplete';
 import { clientApi, apiErrorMessage } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 
@@ -30,6 +31,7 @@ export function AppSettings() {
 }
 
 function CompanyTab() {
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['company'],
     queryFn: async () => (await clientApi.get('/app/company')).data,
@@ -38,10 +40,42 @@ function CompanyTab() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [verifyName, setVerifyName] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (data) setForm(data);
   }, [data]);
+
+  async function verifyFromRegistry(url: string) {
+    setVerifying(true);
+    setVerifyMsg(null);
+    setError(null);
+    try {
+      const res = await clientApi.post('/app/company-verification/verify-company', {
+        url,
+      });
+      setForm((f: any) => ({ ...f, ...res.data.company }));
+      qc.invalidateQueries({ queryKey: ['company'] });
+      setVerifyMsg('Informations importées du registre du commerce.');
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function toggleAuto(value: boolean) {
+    setForm((f: any) => ({ ...f, autoVerify: value }));
+    try {
+      await clientApi.put('/app/company', { autoVerify: value });
+      qc.invalidateQueries({ queryKey: ['company'] });
+    } catch {
+      /* revert on error */
+      setForm((f: any) => ({ ...f, autoVerify: !value }));
+    }
+  }
 
   if (isLoading || !form) return <LoadingState />;
 
@@ -64,6 +98,7 @@ function CompanyTab() {
         city: form.city,
         email: form.email,
         phone: form.phone,
+        autoVerify: !!form.autoVerify,
       });
       setMsg('Profil enregistré.');
     } catch (err) {
@@ -115,9 +150,62 @@ function CompanyTab() {
             <input className="input font-mono" value={form.vatNumber || ''} onChange={set('vatNumber')} placeholder="CHE-123.456.789 TVA" />
           </div>
         </div>
-        <p className="mt-3 text-xs text-ink-faint">
-          Astuce : importez ces données automatiquement via la page «&nbsp;Vérification&nbsp;».
-        </p>
+        {/* Verify from the official registry */}
+        <div className="mt-5 border-t border-line pt-5">
+          <div className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-ink-soft">
+            <ShieldCheck className="h-4 w-4 text-brand-600" /> Vérifier au registre
+          </div>
+          <p className="mb-3 text-xs text-ink-faint">
+            Recherchez votre entreprise pour importer automatiquement IDE, TVA,
+            adresse et forme juridique depuis le registre du commerce.
+          </p>
+          <CompanyAutocomplete
+            apiClient={clientApi}
+            basePath="/app/company-verification"
+            placeholder="Rechercher mon entreprise…"
+            value={verifyName}
+            onChange={setVerifyName}
+            onPick={(r) => {
+              setVerifyName(r.nom);
+              verifyFromRegistry(r.lien);
+            }}
+          />
+          {verifying && (
+            <p className="mt-2 flex items-center gap-2 text-xs text-ink-muted">
+              <Spinner className="h-3.5 w-3.5" /> Import en cours…
+            </p>
+          )}
+          {verifyMsg && <p className="mt-2 text-xs text-emerald-600">{verifyMsg}</p>}
+        </div>
+
+        {/* Automatic monthly verification */}
+        <div className="mt-5 rounded-xl bg-surface-subtle p-4">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={!!form.autoVerify}
+              onChange={(e) => toggleAuto(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-line text-brand-600 focus:ring-brand-300"
+            />
+            <span>
+              <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                <RefreshCw className="h-3.5 w-3.5 text-ink-faint" />
+                Vérification automatique mensuelle
+              </span>
+              <span className="mt-0.5 block text-xs text-ink-muted">
+                Une fois par mois, Zeylo revérifie automatiquement vos
+                informations au registre du commerce et les met à jour si elles
+                ont changé (raison sociale, adresse, forme juridique…). Vous
+                gardez toujours des données officielles à jour, sans rien faire.
+              </span>
+              {form.lastAutoVerifyAt && (
+                <span className="mt-1 block text-xs text-ink-faint">
+                  Dernière vérification auto : {formatDate(form.lastAutoVerifyAt)}
+                </span>
+              )}
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Coordonnées */}

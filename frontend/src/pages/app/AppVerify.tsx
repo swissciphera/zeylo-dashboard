@@ -37,7 +37,7 @@ export function AppVerify() {
     <>
       <PageHeader
         title="Vérification d'entreprise"
-        subtitle="Recherchez une entreprise suisse et importez ses données officielles"
+        subtitle="Recherchez une entreprise suisse et ajoutez-la à vos contacts"
       />
       {status === undefined ? (
         <div className="card">
@@ -105,7 +105,7 @@ function AutoVerify() {
     setSaving(true);
     setError(null);
     try {
-      await clientApi.post('/app/company-verification/save', { url: selected.lien });
+      await clientApi.post('/app/company-verification/save-contact', { url: selected.lien });
       setSaved(true);
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -212,7 +212,8 @@ function AutoVerify() {
               <h3 className="text-base font-semibold text-ink">Vérifiez une entreprise</h3>
               <p className="max-w-sm text-sm text-ink-muted">
                 Tapez le nom d'une entreprise suisse pour récupérer ses informations
-                au registre du commerce (IDE, TVA, adresse, direction…).
+                au registre du commerce (IDE, TVA, adresse, direction…) et les
+                ajouter à vos contacts.
               </p>
             </div>
           )}
@@ -419,12 +420,12 @@ function DetailsView({
         )}
         {saved ? (
           <span className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-600">
-            <CheckCircle2 className="h-5 w-5" /> Importé dans votre entreprise
+            <CheckCircle2 className="h-5 w-5" /> Ajouté aux contacts
           </span>
         ) : (
           <button className="btn-primary" onClick={onSave} disabled={saving}>
             {saving ? <Spinner className="h-4 w-4 text-white" /> : <BadgeCheck className="h-4 w-4" />}
-            Enregistrer dans mon entreprise
+            Enregistrer dans les contacts
           </button>
         )}
       </div>

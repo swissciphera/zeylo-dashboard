@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class UpdateCompanyDto {
@@ -14,6 +14,7 @@ export class UpdateCompanyDto {
   @IsOptional() @IsString() logoFileId?: string;
   @IsOptional() @IsString() ideNumber?: string;
   @IsOptional() @IsString() vatNumber?: string;
+  @IsOptional() @IsBoolean() autoVerify?: boolean;
 }
 
 @Injectable()

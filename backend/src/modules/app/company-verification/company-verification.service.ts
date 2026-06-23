@@ -31,12 +31,12 @@ export class CompanyVerificationService {
     return this.scraper.details(url);
   }
 
-  // Scrape (fresh) then persist into the caller's company profile.
-  async saveToCompany(companyId: string, url: string) {
+  // Verify the caller's OWN company: scrape fresh + persist to its profile.
+  // Stores the Moneyhouse source URL so the monthly job can re-check it.
+  async verifyOwnCompany(companyId: string, url: string) {
     const data = await this.scraper.details(url);
-
     const addr = data.address || {};
-    const addressLine = [addr.complement, addr.street, [addr.postal_code, addr.city].filter(Boolean).join(' ')]
+    const addressLine = [addr.complement, addr.street]
       .filter(Boolean)
       .join(', ');
 
@@ -46,13 +46,49 @@ export class CompanyVerificationService {
         name: data.company_name || undefined,
         sector: data.sector || undefined,
         address: addressLine || undefined,
+        postalCode: addr.postal_code || undefined,
+        city: addr.city || undefined,
         ideNumber: data.registry_info?.ide || undefined,
         vatNumber: data.registry_info?.tva || undefined,
         registryData: data,
+        verificationSourceUrl: url,
         verifiedAt: new Date(),
       },
     });
-
     return { company, data };
+  }
+
+  // Save a verified company as a CONTACT of the caller's company.
+  async saveToContact(companyId: string, url: string) {
+    const data = await this.scraper.details(url);
+    const addr = data.address || {};
+    const addressLine = [
+      addr.complement,
+      addr.street,
+      [addr.postal_code, addr.city].filter(Boolean).join(' '),
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const ri = data.registry_info || {};
+    const notes = [
+      ri.ide ? `IDE : ${ri.ide}` : null,
+      ri.tva ? `TVA : ${ri.tva}` : null,
+      ri.legal_form ? `Forme : ${ri.legal_form}` : null,
+      addressLine ? `Adresse : ${addressLine}` : null,
+      data.sourceUrl ? `Registre : ${data.sourceUrl}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const contact = await this.prisma.contact.create({
+      data: {
+        companyId,
+        type: 'PROSPECT',
+        source: 'MANUAL',
+        name: data.company_name || 'Entreprise',
+        notes: notes || null,
+      },
+    });
+    return { contact };
   }
 }

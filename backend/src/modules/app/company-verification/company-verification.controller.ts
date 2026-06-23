@@ -32,8 +32,14 @@ export class CompanyVerificationController {
   }
 
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  @Post('save')
-  save(@CurrentCompany() companyId: string, @Body() dto: CompanyUrlDto) {
-    return this.service.saveToCompany(companyId, dto.url);
+  @Post('verify-company')
+  verifyCompany(@CurrentCompany() companyId: string, @Body() dto: CompanyUrlDto) {
+    return this.service.verifyOwnCompany(companyId, dto.url);
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('save-contact')
+  saveContact(@CurrentCompany() companyId: string, @Body() dto: CompanyUrlDto) {
+    return this.service.saveToContact(companyId, dto.url);
   }
 }

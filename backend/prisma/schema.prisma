@@ -173,6 +173,9 @@ model Company {
   vatNumber          String?
   registryData       Json?
   verifiedAt         DateTime?
+  verificationSourceUrl String?
+  autoVerify         Boolean            @default(false)
+  lastAutoVerifyAt   DateTime?
   referredById       String?
   referredBy         Company?           @relation("CompanyReferrals", fields: [referredById], references: [id])
   referrals          Company[]          @relation("CompanyReferrals")
