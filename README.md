@@ -220,4 +220,33 @@ Voir [Architecture](#architecture). Points d'entrée utiles :
 
 ---
 
+## Domaines personnalisés des clients (liens + page publique)
+
+Un client peut connecter son propre domaine (Paramètres → Domaine) pour des
+liens à sa marque et une page publique `https://sondomaine.com/`.
+
+**Côté application (automatique) :** enregistrement du domaine, vérification
+DNS (CNAME + TXT), configuration Cloudflare en 1 clic, page publique, et
+restriction de sécurité (sur un domaine client, seules les pages publiques
+sont servies — `/admin` et `/app` renvoient une page d'erreur). Définir
+`VITE_APP_HOST` au build (dérivé de `PUBLIC_LINK_TARGET`) active cette
+restriction.
+
+**Côté infrastructure (SSL / routage) — à faire une fois :**
+
+- **Recommandé : Cloudflare.** Si le client laisse l'enregistrement **proxifié**
+  (nuage orange — c'est ce que fait l'auto-config), Cloudflare fournit le
+  **SSL automatiquement** à la périphérie. Régler le mode SSL Cloudflare sur
+  **Full**.
+- **Sans Cloudflare :** ajouter le domaine au service `frontend` dans Dokploy
+  (Domains) pour que **Traefik émette un certificat Let's Encrypt**, ou
+  configurer un domaine **wildcard + certresolver** côté Traefik pour couvrir
+  tous les domaines clients automatiquement.
+
+Tant que le hostname n'est pas routé vers le `frontend` (Dokploy/Traefik), le
+DNS pointe vers Zeylo mais le certificat/serveur ne répondra pas — c'est
+l'unique étape manuelle.
+
+---
+
 © Zeylo · Conçu en Suisse 🇨🇭

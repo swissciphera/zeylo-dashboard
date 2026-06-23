@@ -5,6 +5,9 @@ WORKDIR /app
 # API base URL baked at build time (same-origin /api via nginx by default)
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Main dashboard host — used to lock custom domains to public pages only
+ARG VITE_APP_HOST=
+ENV VITE_APP_HOST=$VITE_APP_HOST
 
 COPY package*.json ./
 RUN npm ci

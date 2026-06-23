@@ -67,6 +67,8 @@ services:
       args:
         # Frontend talks to the backend through nginx at /api (same origin)
         VITE_API_BASE_URL: /api
+        # Main dashboard host (locks custom domains to public pages only)
+        VITE_APP_HOST: ${PUBLIC_LINK_TARGET}
     restart: unless-stopped
     depends_on:
       - backend

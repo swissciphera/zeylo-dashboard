@@ -12,6 +12,24 @@ import {
 import { publicApi } from '@/lib/api';
 import { Spinner } from '@/components/ui/LoadingState';
 import { initials } from '@/lib/format';
+import { isCustomDomain } from '@/lib/host';
+
+// Branded error page for unknown domains / invalid routes on a custom domain.
+export function DomainError() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle px-6 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500 ring-1 ring-red-200">
+        <Building2 className="h-7 w-7" />
+      </div>
+      <h1 className="mt-5 text-xl font-semibold text-ink">Page indisponible</h1>
+      <p className="mt-2 max-w-sm text-sm text-ink-muted">
+        Cette adresse n'est pas configurée ou la page demandée n'existe pas.
+        Vérifiez le lien que vous avez reçu.
+      </p>
+      <p className="mt-8 text-xs text-ink-faint">Propulsé par Zeylo</p>
+    </div>
+  );
+}
 
 interface CompanyPage {
   name: string;
@@ -49,7 +67,10 @@ export function RootGate() {
       </div>
     );
   }
-  if (state === 'redirect') return <Navigate to="/app" replace />;
+  if (state === 'redirect') {
+    // On a custom domain an unknown host is an error; on the main host go to app.
+    return isCustomDomain() ? <DomainError /> : <Navigate to="/app" replace />;
+  }
   return <CompanyPublicView data={data!} />;
 }
 

@@ -33,10 +33,24 @@ import { AppSettings } from '@/pages/app/AppSettings';
 // Public pages
 import { TempAccessPage } from '@/pages/public/TempAccessPage';
 import { RatingPage } from '@/pages/public/RatingPage';
-import { RootGate, CompanyPublicPage } from '@/pages/public/CompanyPublic';
+import { RootGate, CompanyPublicPage, DomainError } from '@/pages/public/CompanyPublic';
 import { NotFound } from '@/pages/NotFound';
+import { isCustomDomain } from '@/lib/host';
 
 export default function App() {
+  // On a client's connected custom domain, only public pages are served.
+  // The dashboard (/admin, /app) and everything else returns an error page.
+  if (isCustomDomain()) {
+    return (
+      <Routes>
+        <Route path="/" element={<RootGate />} />
+        <Route path="/access/:token" element={<TempAccessPage />} />
+        <Route path="/rate/:token" element={<RatingPage />} />
+        <Route path="*" element={<DomainError />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
       {/* Root: company public page on a connected domain, else the app */}
