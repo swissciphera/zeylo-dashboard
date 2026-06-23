@@ -1,34 +1,40 @@
-# Caddy with automatic, on-demand TLS for unlimited custom client domains.
-# Each domain that points to this server gets a Let's Encrypt certificate on
-# first HTTPS request — but ONLY if the backend authorizes it (verified domain).
+# Caddy = single public entrypoint with automatic HTTPS.
+# - Serves the SPA and proxies /api to the backend.
+# - Issues a real Let's Encrypt certificate automatically for the dashboard
+#   host AND every custom client domain (on-demand), gated by the backend so
+#   only verified domains get a certificate.
 {
 	email {$ACME_EMAIL:admin@ciphera.ch}
-	# Admin API reachable by the backend (internal network) to provision
-	# per-domain certificates with each owner's email.
+	# Admin API (internal network only) — the backend provisions per-domain
+	# certificates with each owner's email through it.
 	admin 0.0.0.0:2019
 	on_demand_tls {
 		ask {$DOMAIN_ASK_URL:http://backend:3000/api/public/domain-allowed}
 	}
 }
 
-# Catch-all HTTPS site: certificate obtained on demand per hostname.
+# All HTTPS hosts (dashboard + custom domains). Certificate obtained on demand
+# per hostname, authorized by the ask endpoint.
 https:// {
 	tls {
 		on_demand
 	}
 	encode gzip zstd
 
-	# API proxied to the backend (same origin /api)
-	@api path /api/*
-	reverse_proxy @api {$BACKEND_UPSTREAM:backend:3000}
+	# API → backend (same origin /api)
+	handle /api/* {
+		reverse_proxy {$BACKEND_UPSTREAM:backend:3000}
+	}
 
-	# SPA
-	root * /srv
-	try_files {path} /index.html
-	file_server
+	# SPA (client-side routing)
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
 }
 
-# Redirect plain HTTP to HTTPS
+# Redirect plain HTTP to HTTPS (also serves ACME HTTP-01 challenges).
 http:// {
 	redir https://{host}{uri} permanent
 }

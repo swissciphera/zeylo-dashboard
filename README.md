@@ -119,6 +119,36 @@ openssl rand -base64 48   # à répéter pour chacun des 4 secrets
 
 ---
 
+## Déploiement « mode Caddy » — HTTPS 100% automatique (recommandé pour les domaines clients)
+
+C'est l'option **la plus robuste** : Caddy devient l'entrée publique (ports
+80/443) et **émet automatiquement un certificat Let's Encrypt** pour le
+dashboard **et chaque domaine client vérifié** (routage + TLS gérés tout seuls,
+compatible Cloudflare **Full strict**). À utiliser sur un serveur où Caddy peut
+prendre les ports 80/443 (serveur dédié / VPS, **sans** le Traefik de Dokploy
+sur ces ports).
+
+```bash
+cp .env.example .env
+# Renseignez au minimum : POSTGRES_*, DATABASE_URL, les 4 secrets JWT,
+# CORS_ORIGINS, PUBLIC_APP_URL, PUBLIC_LINK_TARGET, ACME_EMAIL
+docker compose -f docker-compose.caddy.yml up -d --build
+```
+
+1. Pointez le **domaine du dashboard** (A/AAAA) vers ce serveur.
+2. Pour chaque client : son domaine est pointé (A/CNAME) vers ce serveur — le
+   certificat est créé automatiquement à la première visite **uniquement si le
+   domaine est vérifié** (autorisation via `/api/public/domain-allowed`).
+3. Le backend provisionne aussi un certificat **sous l'email du patron** dès la
+   vérification (via l'Admin API Caddy, `CADDY_ADMIN_URL=http://frontend:2019`).
+4. Cloudflare (optionnel) : proxy ON, mode SSL **Full (strict)** — l'auto-config
+   « 1 clic » le règle pour vous.
+
+Les certificats persistent dans le volume `caddy_data`. L'Admin API Caddy
+(`2019`) reste interne (jamais publiée).
+
+---
+
 ## Lancement local (Docker)
 
 ```bash
