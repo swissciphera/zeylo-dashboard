@@ -1,0 +1,475 @@
+// Zeylo Dashboard — Prisma schema
+// Two strictly separated identity systems:
+//   - PlatformAdmin : Zeylo platform staff (access /admin)
+//   - User          : client / "patron" accounts, scoped to a Company (access /app)
+// All tenant-owned tables carry companyId for strict multi-tenant isolation.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────
+
+enum ActorType {
+  ADMIN
+  CLIENT
+}
+
+enum AdminRole {
+  SUPERADMIN
+  SUPPORT
+}
+
+enum UserRole {
+  OWNER // patron
+  MANAGER
+  STAFF
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  FREE
+}
+
+enum NoteAuthorType {
+  CLIENT // note left by an end customer
+  PATRON // internal note left by the boss
+}
+
+enum LeaveType {
+  VACATION
+  SICK
+  UNPAID
+  OTHER
+}
+
+enum ProjectStatus {
+  IN_PROGRESS // en cours
+  DECLARED_DONE // déclaré terminé par employé
+  PHOTOS_SENT // photos envoyées
+  VALIDATED // validé par patron
+  REFUSED // refusé par patron
+}
+
+enum ContactType {
+  PROSPECT
+  CLIENT
+}
+
+enum ContactSource {
+  MANUAL
+  WEBSITE_FORM
+  EMAIL_INBOX
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  FAILED
+  REFUNDED
+}
+
+enum LinkedEntityType {
+  COMPANY
+  PROJECT
+  EMPLOYEE
+  CONTRACT
+  CONTACT
+}
+
+// ─────────────────────────────────────────────────────────────
+// Identity & auth
+// ─────────────────────────────────────────────────────────────
+
+model PlatformAdmin {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  name         String
+  role         AdminRole      @default(SUPERADMIN)
+  isActive     Boolean        @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  supportAccesses SupportAccess[]
+  auditLogs    AuditLog[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(OWNER)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+// Hashed refresh tokens (rotation + revoke). Polymorphic by actorType.
+model RefreshToken {
+  id         String    @id @default(cuid())
+  actorType  ActorType
+  actorId    String
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([actorType, actorId])
+}
+
+// Brute-force protection: tracks failed login attempts per identifier.
+model LoginAttempt {
+  id          String    @id @default(cuid())
+  actorType   ActorType
+  identifier  String // email (lowercased)
+  ip          String?
+  success     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([actorType, identifier, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tenant (Company) and business data
+// ─────────────────────────────────────────────────────────────
+
+model Company {
+  id                 String             @id @default(cuid())
+  name               String
+  sector             String?
+  logoFileId         String?
+  address            String?
+  email              String?
+  phone              String?
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  plan               String             @default("free")
+  trialEndsAt        DateTime?
+  // Referral program
+  referralCode       String             @unique
+  referredById       String?
+  referredBy         Company?           @relation("CompanyReferrals", fields: [referredById], references: [id])
+  referrals          Company[]          @relation("CompanyReferrals")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  users          User[]
+  employees      Employee[]
+  services       Service[]
+  projects       Project[]
+  contacts       Contact[]
+  files          FileObject[]
+  payments       Payment[]
+  subscriptions  Subscription[]
+  supportAccesses SupportAccess[]
+  auditLogs      AuditLog[]
+  referralEventsAsReferrer Referral[] @relation("ReferralReferrer")
+  referralEventsAsReferred Referral[] @relation("ReferralReferred")
+
+  @@index([referredById])
+}
+
+model Employee {
+  id              String         @id @default(cuid())
+  companyId       String
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  position        String?
+  photoFileId     String?
+  contractFileId  String?
+  contractEndDate DateTime?
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  notes           EmployeeNote[]
+  leaves          Leave[]
+  assignments     ProjectAssignment[]
+
+  @@index([companyId])
+}
+
+model EmployeeNote {
+  id         String         @id @default(cuid())
+  companyId  String
+  employeeId String
+  employee   Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  authorType NoteAuthorType
+  authorName String?
+  rating     Int? // 1..5 when applicable
+  comment    String?
+  createdAt  DateTime       @default(now())
+
+  @@index([employeeId])
+  @@index([companyId])
+}
+
+model Leave {
+  id         String    @id @default(cuid())
+  companyId  String
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       LeaveType @default(VACATION)
+  startDate  DateTime
+  endDate    DateTime
+  reason     String?
+  createdAt  DateTime  @default(now())
+
+  @@index([employeeId])
+  @@index([companyId])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  category    String? // free-form: nettoyage, fiduciaire, dropservicing, maintenance...
+  description String?
+  priceLabel  String? // free-form pricing label, e.g. "dès 90.- / h"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model Project {
+  id                String        @id @default(cuid())
+  companyId         String
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title             String
+  description       String?
+  status            ProjectStatus @default(IN_PROGRESS)
+  address           String?
+  clientName        String?
+  clientPhone       String?
+  startDate         DateTime?
+  dueDate           DateTime?
+  refusalReason     String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  assignments  ProjectAssignment[]
+  tempAccesses ProjectTempAccess[]
+  ratings      ClientRating[]
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model ProjectAssignment {
+  id         String   @id @default(cuid())
+  companyId  String
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([projectId, employeeId])
+  @@index([companyId])
+}
+
+// One-time link + SMS code for temporary employee access to a single project.
+model ProjectTempAccess {
+  id          String    @id @default(cuid())
+  companyId   String
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  token       String    @unique
+  smsCodeHash String
+  phone       String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId])
+}
+
+// One-time client rating link for a project (1..5 + optional comment).
+model ClientRating {
+  id        String    @id @default(cuid())
+  companyId String
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  rating    Int? // filled when submitted
+  comment   String?
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([companyId])
+}
+
+model Contact {
+  id        String        @id @default(cuid())
+  companyId String
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type      ContactType   @default(PROSPECT)
+  source    ContactSource @default(MANUAL)
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([companyId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Files (local storage, metadata in DB)
+// ─────────────────────────────────────────────────────────────
+
+model FileObject {
+  id           String           @id @default(cuid())
+  companyId    String?
+  company      Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  storageKey   String           @unique // relative path inside the storage volume
+  originalName String
+  mimeType     String
+  size         Int
+  checksum     String
+  linkedType   LinkedEntityType?
+  linkedId     String?
+  uploadedByType ActorType?
+  uploadedById String?
+  createdAt    DateTime         @default(now())
+
+  @@index([companyId])
+  @@index([linkedType, linkedId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Billing (stubbed integration, real schema)
+// ─────────────────────────────────────────────────────────────
+
+model Subscription {
+  id          String             @id @default(cuid())
+  companyId   String
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan        String
+  status      SubscriptionStatus @default(TRIAL)
+  startedAt   DateTime           @default(now())
+  renewsAt    DateTime?
+  canceledAt  DateTime?
+  externalId  String? // Stripe subscription id (when wired)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([companyId])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  companyId   String
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  amountCents Int
+  currency    String        @default("CHF")
+  status      PaymentStatus @default(PENDING)
+  failureReason String?
+  externalId  String?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([companyId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Referral program (platform-level tracking)
+// ─────────────────────────────────────────────────────────────
+
+model Referral {
+  id               String   @id @default(cuid())
+  referrerId       String
+  referrer         Company  @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId       String
+  referred         Company  @relation("ReferralReferred", fields: [referredId], references: [id], onDelete: Cascade)
+  tier             Int      @default(0)
+  rewardMonths     Int      @default(0)
+  discountPercent  Int      @default(0)
+  convertedToPaid  Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([referrerId, referredId])
+  @@index([referrerId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Audit & support access
+// ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String        @id @default(cuid())
+  actorType  ActorType
+  actorId    String?
+  actorName  String?
+  adminId    String?
+  admin      PlatformAdmin? @relation(fields: [adminId], references: [id])
+  companyId  String?
+  company    Company?      @relation(fields: [companyId], references: [id])
+  action     String // e.g. "company.view", "employee.update"
+  reason     String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime      @default(now())
+
+  @@index([actorType, actorId])
+  @@index([companyId])
+  @@index([createdAt])
+}
+
+// Journaled support access: every time a platform admin views tenant content.
+model SupportAccess {
+  id        String        @id @default(cuid())
+  adminId   String
+  admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  resource  String // what was consulted, e.g. "projects", "employees"
+  reason    String
+  createdAt DateTime      @default(now())
+
+  @@index([companyId])
+  @@index([adminId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Platform settings (singleton row, id = "default")
+// ─────────────────────────────────────────────────────────────
+
+model PlatformSettings {
+  id                 String   @id @default("default")
+  currency           String   @default("CHF")
+  monthlyPriceCents  Int      @default(4900)
+  yearlyPriceCents   Int      @default(49000)
+  trialDays          Int      @default(14)
+  // Referral rules
+  referralRewardMonths Int    @default(1)
+  referralDiscountPercent Int @default(10)
+  referralTiers      Json     @default("[{\"tier\":1,\"referrals\":1,\"rewardMonths\":1},{\"tier\":2,\"referrals\":3,\"rewardMonths\":3},{\"tier\":3,\"referrals\":5,\"rewardMonths\":6}]")
+  updatedAt          DateTime @updatedAt @default(now())
+}

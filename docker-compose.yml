@@ -1,0 +1,81 @@
+# Docker Compose for Zeylo Dashboard — compatible Dokploy.
+# Dokploy already runs Traefik: NO Traefik labels / no manual reverse proxy here.
+# Only the `frontend` service is exposed; it reverse-proxies /api to the backend
+# over the internal network.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - zeylo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      DATABASE_URL: ${DATABASE_URL}
+      BACKEND_PORT: ${BACKEND_PORT}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      JWT_ADMIN_ACCESS_SECRET: ${JWT_ADMIN_ACCESS_SECRET}
+      JWT_ADMIN_REFRESH_SECRET: ${JWT_ADMIN_REFRESH_SECRET}
+      JWT_CLIENT_ACCESS_SECRET: ${JWT_CLIENT_ACCESS_SECRET}
+      JWT_CLIENT_REFRESH_SECRET: ${JWT_CLIENT_REFRESH_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL}
+      FILE_STORAGE_DIR: ${FILE_STORAGE_DIR}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+    volumes:
+      - file_storage:/app/storage
+    networks:
+      - zeylo
+    expose:
+      - "${BACKEND_PORT}"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Frontend talks to the backend through nginx at /api (same origin)
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - zeylo
+    # Exposed for Dokploy to attach the domain to this container's port 80.
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+volumes:
+  postgres_data:
+  file_storage:
+
+networks:
+  zeylo:
+    driver: bridge
