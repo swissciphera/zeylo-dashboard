@@ -52,6 +52,24 @@ export class PublicService {
     return this.scraper.details(url);
   }
 
+  // Authorization for on-demand TLS (Caddy `ask`): only issue certificates
+  // for the main host or a VERIFIED custom domain.
+  async domainAllowed(host?: string): Promise<boolean> {
+    const h = (host || '').toLowerCase().replace(/^www\./, '').trim();
+    if (!h) return false;
+    const mainTarget = (process.env.PUBLIC_LINK_TARGET || '').toLowerCase();
+    const mainApp = (process.env.PUBLIC_APP_URL || '')
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+      .toLowerCase();
+    if (h === mainTarget || h === mainApp) return true;
+    const c = await this.prisma.company.findFirst({
+      where: { linkDomain: h, linkDomainStatus: 'VERIFIED' },
+      select: { id: true },
+    });
+    return Boolean(c);
+  }
+
   // ── Public company page (served on the connected domain root) ─
   async companyPage(host?: string, id?: string) {
     let company: any = null;

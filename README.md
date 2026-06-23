@@ -232,20 +232,35 @@ sont servies — `/admin` et `/app` renvoient une page d'erreur). Définir
 `VITE_APP_HOST` au build (dérivé de `PUBLIC_LINK_TARGET`) active cette
 restriction.
 
-**Côté infrastructure (SSL / routage) — à faire une fois :**
+### Certificat SSL — résoudre l'erreur Cloudflare 526
 
-- **Recommandé : Cloudflare.** Si le client laisse l'enregistrement **proxifié**
-  (nuage orange — c'est ce que fait l'auto-config), Cloudflare fournit le
-  **SSL automatiquement** à la périphérie. Régler le mode SSL Cloudflare sur
-  **Full**.
-- **Sans Cloudflare :** ajouter le domaine au service `frontend` dans Dokploy
-  (Domains) pour que **Traefik émette un certificat Let's Encrypt**, ou
-  configurer un domaine **wildcard + certresolver** côté Traefik pour couvrir
-  tous les domaines clients automatiquement.
+Le **526** = Cloudflare est en **Full (strict)** mais l'origine (Traefik)
+n'a **pas de certificat valide** pour le domaine client (Traefik n'a de cert
+que pour le domaine du dashboard). Trois solutions, du plus simple au plus
+automatique :
 
-Tant que le hostname n'est pas routé vers le `frontend` (Dokploy/Traefik), le
-DNS pointe vers Zeylo mais le certificat/serveur ne répondra pas — c'est
-l'unique étape manuelle.
+**1. Sous-domaines de votre domaine (`*.ciphera.ch`) — recommandé**
+Émettez un **certificat wildcard `*.ciphera.ch`** sur l'origine via le
+challenge **DNS-01 Cloudflare** (Dokploy/Traefik : `certResolver` avec un token
+API Cloudflare). Tous les `*.ciphera.ch` sont alors couverts automatiquement,
+et Cloudflare Full (strict) passe. Aucune action par client.
+
+**2. Domaines externes des clients — au cas par cas**
+Ajoutez le domaine au service `frontend` dans **Dokploy → Domains** : Traefik
+émet un Let's Encrypt (HTTP-01) pour ce domaine.
+
+**3. Certificats 100% automatiques pour des domaines illimités — Caddy**
+Déployez avec **`docker-compose.caddy.yml`** : le frontend devient l'entrée
+publique (ports 80/443) et **émet un certificat Let's Encrypt à la volée**
+(on-demand TLS) pour chaque domaine — uniquement s'il est **vérifié**
+(autorisation via `GET /api/public/domain-allowed`). Variables :
+`ACME_EMAIL`, et les domaines clients pointés (A/CNAME) vers ce serveur.
+Dans ce mode, mettez Cloudflare en **Full (strict)** ou désactivez le proxy.
+
+> Dépannage rapide : si vous restez sur Traefik et voulez juste lever le 526
+> immédiatement, passez le mode SSL Cloudflare de **Full (strict)** à **Full**
+> — mais le hostname doit tout de même être routé vers le `frontend`
+> (solutions 1 ou 2), sinon Traefik renverra une 404.
 
 ---
 

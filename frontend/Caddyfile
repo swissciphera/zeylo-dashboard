@@ -1,0 +1,31 @@
+# Caddy with automatic, on-demand TLS for unlimited custom client domains.
+# Each domain that points to this server gets a Let's Encrypt certificate on
+# first HTTPS request — but ONLY if the backend authorizes it (verified domain).
+{
+	email {$ACME_EMAIL:admin@ciphera.ch}
+	on_demand_tls {
+		ask {$DOMAIN_ASK_URL:http://backend:3000/api/public/domain-allowed}
+	}
+}
+
+# Catch-all HTTPS site: certificate obtained on demand per hostname.
+https:// {
+	tls {
+		on_demand
+	}
+	encode gzip zstd
+
+	# API proxied to the backend (same origin /api)
+	@api path /api/*
+	reverse_proxy @api {$BACKEND_UPSTREAM:backend:3000}
+
+	# SPA
+	root * /srv
+	try_files {path} /index.html
+	file_server
+}
+
+# Redirect plain HTTP to HTTPS
+http:// {
+	redir https://{host}{uri} permanent
+}

@@ -1,0 +1,99 @@
+# Alternative deployment: Zeylo is the PUBLIC entry point (ports 80/443) and
+# issues TLS certificates automatically for every verified custom client
+# domain via Caddy on-demand TLS.
+#
+# Use this INSTEAD of docker-compose.yml when you are NOT putting the frontend
+# behind Dokploy/Traefik for custom domains. Point the dashboard domain AND all
+# client domains (A/CNAME) at this server.
+#
+#   docker compose -f docker-compose.caddy.yml up --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - zeylo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      DATABASE_URL: ${DATABASE_URL}
+      BACKEND_PORT: ${BACKEND_PORT}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      JWT_ADMIN_ACCESS_SECRET: ${JWT_ADMIN_ACCESS_SECRET}
+      JWT_ADMIN_REFRESH_SECRET: ${JWT_ADMIN_REFRESH_SECRET}
+      JWT_CLIENT_ACCESS_SECRET: ${JWT_CLIENT_ACCESS_SECRET}
+      JWT_CLIENT_REFRESH_SECRET: ${JWT_CLIENT_REFRESH_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL}
+      FILE_STORAGE_DIR: ${FILE_STORAGE_DIR}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      PROXYCHECK_API_KEY: ${PROXYCHECK_API_KEY}
+      PROXY_URL: ${PROXY_URL}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      PUBLIC_LINK_TARGET: ${PUBLIC_LINK_TARGET}
+    volumes:
+      - file_storage:/app/storage
+    networks:
+      - zeylo
+    expose:
+      - "${BACKEND_PORT}"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.caddy
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_APP_HOST: ${PUBLIC_LINK_TARGET}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+      DOMAIN_ASK_URL: http://backend:3000/api/public/domain-allowed
+    networks:
+      - zeylo
+    # Public entry: needs 80 + 443 to obtain/serve certificates.
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  file_storage:
+  caddy_data:
+  caddy_config:
+
+networks:
+  zeylo:
+    driver: bridge

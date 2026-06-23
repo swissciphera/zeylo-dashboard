@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
+import { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import {
   PublicService,
@@ -40,6 +50,13 @@ export class PublicController {
   @Get('company-page')
   companyPage(@Query('host') host?: string, @Query('id') id?: string) {
     return this.publicService.companyPage(host, id);
+  }
+
+  // On-demand TLS authorization (Caddy `ask`): 200 = issue cert, 404 = deny.
+  @Get('domain-allowed')
+  async domainAllowed(@Query('domain') domain: string, @Res() res: Response) {
+    const ok = await this.publicService.domainAllowed(domain);
+    res.status(ok ? 200 : 404).send(ok ? 'ok' : 'denied');
   }
 
   @Throttle({ default: { limit: 15, ttl: 60_000 } })
