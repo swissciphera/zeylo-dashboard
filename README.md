@@ -91,6 +91,14 @@ openssl rand -base64 48   # à répéter pour chacun des 4 secrets
 > Les intégrations tierces sont **stubées** : sans clés, l'app fonctionne en mode
 > démo (SMS/emails journalisés, jamais envoyés).
 
+> ⚠️ **Mot de passe PostgreSQL** : il est intégré dans `DATABASE_URL`. N'utilisez
+> que des caractères URL-safe (lettres + chiffres). Un `/`, `@`, `:`, `+`, `%`…
+> provoque l'erreur Prisma `P1013: invalid port number in database URL` et le
+> backend ne démarre pas (nginx renvoie alors `502` sur `/api`). Générez-en un
+> propre avec `openssl rand -hex 24`. Si vous changez ce mot de passe après un
+> premier déploiement, **recréez le volume `postgres_data`** (le mot de passe
+> n'est appliqué qu'à la première initialisation de la base).
+
 ---
 
 ## Déploiement sur Dokploy
