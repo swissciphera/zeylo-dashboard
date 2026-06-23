@@ -38,18 +38,15 @@ export class ClientAuthService {
       }
     }
 
-    const settings = await this.prisma.platformSettings.findUnique({
-      where: { id: 'default' },
-    });
-    const trialDays = settings?.trialDays ?? 14;
-
     const result = await this.prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
         data: {
           name: dto.companyName,
           sector: dto.sector,
-          subscriptionStatus: 'TRIAL',
-          trialEndsAt: new Date(Date.now() + trialDays * 86400_000),
+          // Start on the free Standard plan; the 7-day Pro trial is opt-in
+          // from the subscription page (once per company).
+          subscriptionStatus: 'FREE',
+          plan: 'free',
           referralCode: await this.uniqueReferralCode(tx),
           referredById: referredBy?.id,
         },

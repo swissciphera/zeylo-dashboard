@@ -34,8 +34,10 @@ export class SubscriptionService {
       plan: company.plan,
       trialEndsAt: company.trialEndsAt,
       trialDaysLeft: this.trialDaysLeft(status, company.trialEndsAt),
-      // A fresh trial can be started when not currently trialing or active.
-      canStartTrial: status !== 'TRIAL' && status !== 'ACTIVE',
+      trialUsed: Boolean(company.trialUsedAt),
+      // A fresh trial is offered only if never used and not currently active/trialing.
+      canStartTrial:
+        !company.trialUsedAt && status !== 'TRIAL' && status !== 'ACTIVE',
       pricing: {
         currency: settings?.currency ?? 'CHF',
         monthlyPriceCents: settings?.monthlyPriceCents ?? 4900,
@@ -66,6 +68,9 @@ export class SubscriptionService {
     if (company.subscriptionStatus === 'ACTIVE') {
       throw new BadRequestException('Vous êtes déjà abonné.');
     }
+    if (company.trialUsedAt) {
+      throw new BadRequestException('Votre essai gratuit a déjà été utilisé.');
+    }
     const settings = await this.prisma.platformSettings.findUnique({
       where: { id: 'default' },
     });
@@ -76,6 +81,7 @@ export class SubscriptionService {
         subscriptionStatus: 'TRIAL',
         plan: 'pro',
         trialEndsAt: new Date(Date.now() + trialDays * 86400_000),
+        trialUsedAt: new Date(),
       },
     });
     await this.log(companyId, 'subscription.trial_started');

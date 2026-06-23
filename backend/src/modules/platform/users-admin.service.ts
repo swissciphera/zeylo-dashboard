@@ -77,18 +77,14 @@ export class UsersAdminService {
       });
       if (!company) throw new NotFoundException('Entreprise introuvable.');
     } else {
-      const settings = await this.prisma.platformSettings.findUnique({
-        where: { id: 'default' },
-      });
-      const trialDays = settings?.trialDays ?? 14;
       const company = await this.prisma.company.create({
         data: {
           name:
             dto.companyName?.trim() ||
             `${dto.firstName} ${dto.lastName}`.trim(),
           sector: dto.sector,
-          subscriptionStatus: 'TRIAL',
-          trialEndsAt: new Date(Date.now() + trialDays * 86400_000),
+          subscriptionStatus: 'FREE',
+          plan: 'free',
           referralCode: await this.uniqueReferralCode(),
         },
       });

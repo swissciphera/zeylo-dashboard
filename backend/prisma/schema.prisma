@@ -165,6 +165,7 @@ model Company {
   subscriptionStatus SubscriptionStatus @default(TRIAL)
   plan               String             @default("free")
   trialEndsAt        DateTime?
+  trialUsedAt        DateTime?
   // Referral program
   referralCode       String             @unique
   // Official registry verification (scraped from Moneyhouse / uid.admin.ch)
@@ -485,9 +486,9 @@ model EmailTemplate {
 model PlatformSettings {
   id                 String   @id @default("default")
   currency           String   @default("CHF")
-  monthlyPriceCents  Int      @default(4900)
-  yearlyPriceCents   Int      @default(49000)
-  trialDays          Int      @default(14)
+  monthlyPriceCents  Int      @default(2495)
+  yearlyPriceCents   Int      @default(24950)
+  trialDays          Int      @default(7)
   // Referral rules
   referralRewardMonths Int    @default(1)
   referralDiscountPercent Int @default(10)
