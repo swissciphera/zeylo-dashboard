@@ -140,7 +140,7 @@ export function AdminUsers() {
     <>
       <PageHeader
         title="Utilisateurs"
-        subtitle="Comptes clients / patrons de la plateforme"
+        subtitle="Tous les comptes de la plateforme"
         actions={
           <div className="flex gap-2">
             <div className="relative">
