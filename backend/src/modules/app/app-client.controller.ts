@@ -61,6 +61,11 @@ export class AppClientController {
     return this.domain.get(companyId);
   }
 
+  @Get('domain/logs')
+  domainLogs(@CurrentCompany() companyId: string) {
+    return this.domain.logs(companyId);
+  }
+
   @Post('domain')
   setDomain(@CurrentCompany() companyId: string, @Body() dto: SetDomainDto) {
     return this.domain.set(companyId, dto);

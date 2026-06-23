@@ -33,6 +33,29 @@ export class DomainService {
     private readonly caddy: CaddyService,
   ) {}
 
+  // Append a line to the company's domain log (shown in the terminal panel).
+  private async event(
+    companyId: string,
+    level: 'info' | 'success' | 'warn' | 'error',
+    message: string,
+  ) {
+    try {
+      await this.prisma.domainEvent.create({
+        data: { companyId, level, message },
+      });
+    } catch {
+      /* logging must never break the flow */
+    }
+  }
+
+  async logs(companyId: string) {
+    return this.prisma.domainEvent.findMany({
+      where: { companyId },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+  }
+
   // ACME email = company email, else the OWNER user's email, else default.
   private async ownerEmail(companyId: string): Promise<string | undefined> {
     const company = await this.prisma.company.findUnique({
@@ -128,6 +151,12 @@ export class DomainService {
         linkDomainVerifiedAt: null,
       },
     });
+    await this.event(companyId, 'info', `Domaine enregistré : ${domain}`);
+    await this.event(
+      companyId,
+      'info',
+      `Ajoutez le CNAME vers ${target()} et le TXT _zeylo-verify, puis vérifiez.`,
+    );
     return this.get(companyId);
   }
 
@@ -146,6 +175,7 @@ export class DomainService {
       },
     });
     if (prev?.linkDomain) await this.caddy.removeDomain(prev.linkDomain);
+    await this.event(companyId, 'info', 'Domaine déconnecté.');
     return this.get(companyId);
   }
 
@@ -160,6 +190,7 @@ export class DomainService {
     }
     const domain = c.linkDomain;
     const tgt = target().toLowerCase();
+    await this.event(companyId, 'info', `Vérification DNS de ${domain}…`);
 
     let cnameOk = false;
     try {
@@ -199,14 +230,40 @@ export class DomainService {
       txtOk = false;
     }
 
+    await this.event(
+      companyId,
+      cnameOk ? 'success' : 'warn',
+      cnameOk ? 'CNAME détecté ✓' : 'CNAME pas encore propagé…',
+    );
+    await this.event(
+      companyId,
+      txtOk ? 'success' : 'warn',
+      txtOk ? 'TXT de vérification détecté ✓' : 'TXT pas encore propagé…',
+    );
+
     const verified = cnameOk && txtOk;
     if (verified) {
       await this.prisma.company.update({
         where: { id: companyId },
         data: { linkDomainStatus: 'VERIFIED', linkDomainVerifiedAt: new Date() },
       });
+      await this.event(companyId, 'success', `Domaine vérifié : ${domain} ✓`);
       // Provision a real TLS certificate for this domain under the owner email.
-      await this.caddy.ensureDomain(domain, await this.ownerEmail(companyId));
+      const email = await this.ownerEmail(companyId);
+      await this.event(
+        companyId,
+        'info',
+        `Demande du certificat TLS (Let's Encrypt)…`,
+      );
+      const tls = await this.caddy.ensureDomain(domain, email);
+      await this.event(companyId, tls.ok ? 'success' : tls.skipped ? 'warn' : 'error', tls.detail);
+      if (tls.ok) {
+        await this.event(
+          companyId,
+          'success',
+          'Certificat en cours d’émission — actif sous peu. Liens et page publique prêts.',
+        );
+      }
     }
     return { verified, cnameOk, txtOk, ...(await this.get(companyId)) };
   }
@@ -221,6 +278,7 @@ export class DomainService {
       throw new BadRequestException("Enregistrez d'abord votre domaine.");
     }
     const domain = c.linkDomain;
+    await this.event(companyId, 'info', 'Connexion à Cloudflare…');
     const headers = {
       Authorization: `Bearer ${dto.apiToken}`,
       'Content-Type': 'application/json',
@@ -248,10 +306,12 @@ export class DomainService {
       throw new BadRequestException('Connexion à Cloudflare impossible.');
     }
     if (!zone) {
+      await this.event(companyId, 'error', 'Aucune zone Cloudflare correspondante pour ce domaine.');
       throw new BadRequestException(
         "Aucune zone Cloudflare ne correspond à ce domaine (le jeton a-t-il accès à ce domaine ?).",
       );
     }
+    await this.event(companyId, 'success', `Zone Cloudflare trouvée : ${zone.name}`);
 
     await this.upsertRecord(zone.id, headers, {
       type: 'CNAME',
@@ -264,6 +324,7 @@ export class DomainService {
       name: `_zeylo-verify.${domain}`,
       content: c.linkDomainToken,
     });
+    await this.event(companyId, 'success', 'Enregistrements DNS créés sur Cloudflare (CNAME + TXT).');
 
     // DNS may take a moment to propagate; attempt verification right away.
     try {

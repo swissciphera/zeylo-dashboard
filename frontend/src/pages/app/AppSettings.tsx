@@ -474,7 +474,8 @@ function DomainTab() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="space-y-6">
       {/* Cloudflare recommendation */}
       <div className="flex items-start gap-3 rounded-2xl bg-brand-50 px-4 py-3 text-sm text-brand-800 ring-1 ring-brand-200">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
@@ -688,6 +689,66 @@ function DomainTab() {
           </div>
         </>
       )}
+      </div>
+
+      <DomainTerminal />
+    </div>
+  );
+}
+
+function DomainTerminal() {
+  const { data } = useQuery({
+    queryKey: ['domain-logs'],
+    queryFn: async () => (await clientApi.get('/app/domain/logs')).data as any[],
+    refetchInterval: 4000,
+  });
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [data]);
+
+  const tone: Record<string, string> = {
+    info: 'text-slate-300',
+    success: 'text-emerald-400',
+    warn: 'text-amber-400',
+    error: 'text-red-400',
+  };
+
+  return (
+    <div className="lg:sticky lg:top-6 h-fit overflow-hidden rounded-2xl border border-ink/80 bg-ink shadow-elevated">
+      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
+        <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+        <span className="ml-2 text-xs font-medium text-white/60">
+          Journal du domaine
+        </span>
+      </div>
+      <div className="h-[420px] overflow-y-auto px-4 py-3 font-mono text-[12px] leading-relaxed scrollbar-slim">
+        {!data || data.length === 0 ? (
+          <p className="text-white/40">
+            En attente… Les étapes (DNS, vérification, certificat) s'afficheront
+            ici en temps réel.
+          </p>
+        ) : (
+          data.map((e) => (
+            <div key={e.id} className="flex gap-2">
+              <span className="shrink-0 text-white/30">
+                {new Date(e.createdAt).toLocaleTimeString('fr-CH', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                })}
+              </span>
+              <span className={tone[e.level] ?? 'text-slate-300'}>
+                {e.message}
+              </span>
+            </div>
+          ))
+        )}
+        <div ref={endRef} />
+      </div>
     </div>
   );
 }

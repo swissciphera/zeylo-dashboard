@@ -505,6 +505,17 @@ model SupportAccess {
   @@index([adminId])
 }
 
+// Live log of custom-domain operations (shown in the Domaine terminal panel).
+model DomainEvent {
+  id        String   @id @default(cuid())
+  companyId String
+  level     String // info | success | warn | error
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+}
+
 // Editable transactional email templates (Resend). One row per template key.
 model EmailTemplate {
   id        String   @id @default(cuid())

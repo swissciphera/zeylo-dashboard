@@ -17,8 +17,18 @@ export class CaddyService {
   }
 
   // Add (or refresh) a TLS automation policy for `domain` using `email`.
-  async ensureDomain(domain: string, email?: string): Promise<void> {
-    if (!this.admin) return;
+  // Returns a status so callers can surface it in the domain log.
+  async ensureDomain(
+    domain: string,
+    email?: string,
+  ): Promise<{ ok: boolean; skipped?: boolean; detail: string }> {
+    if (!this.admin) {
+      return {
+        ok: false,
+        skipped: true,
+        detail: 'Provisionnement TLS auto désactivé (Caddy non configuré).',
+      };
+    }
     const id = `zeylo-${domain}`;
     const acmeEmail = email || process.env.ACME_EMAIL || undefined;
     const policy: any = {
@@ -27,10 +37,7 @@ export class CaddyService {
       issuers: [{ module: 'acme', email: acmeEmail }],
     };
     try {
-      // Idempotent: drop any existing policy with the same id first.
       await fetch(`${this.admin}/id/${id}`, { method: 'DELETE' }).catch(() => {});
-      // Insert at the front so this specific policy wins over the catch-all
-      // on-demand policy.
       const res = await fetch(
         `${this.admin}/config/apps/tls/automation/policies/0`,
         {
@@ -40,14 +47,18 @@ export class CaddyService {
         },
       );
       if (!res.ok) {
-        this.logger.warn(
-          `ensureDomain ${domain}: HTTP ${res.status} ${await res.text().catch(() => '')}`,
-        );
-      } else {
-        this.logger.log(`TLS provisioned for ${domain} (email: ${acmeEmail ?? 'default'})`);
+        const t = await res.text().catch(() => '');
+        this.logger.warn(`ensureDomain ${domain}: HTTP ${res.status} ${t}`);
+        return { ok: false, detail: `Erreur Caddy ${res.status}.` };
       }
+      this.logger.log(`TLS provisioned for ${domain} (email: ${acmeEmail})`);
+      return {
+        ok: true,
+        detail: `Certificat TLS demandé pour ${domain} (email : ${acmeEmail ?? 'défaut'}).`,
+      };
     } catch (e: any) {
       this.logger.warn(`ensureDomain ${domain} failed: ${e?.message}`);
+      return { ok: false, detail: `Caddy injoignable : ${e?.message}` };
     }
   }
 
