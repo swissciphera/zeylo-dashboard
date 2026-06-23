@@ -11,17 +11,41 @@ export interface NavItem {
   end?: boolean;
 }
 
-// Smooth collapse: width springs, labels fade + slide via AnimatePresence.
+// Smooth collapse: the rail width springs; icons stay put (they only re-center),
+// and labels are absolutely positioned so they just fade — never reflow/truncate.
 const WIDTH = { expanded: 256, collapsed: 76 };
 const widthTransition = { type: 'spring', stiffness: 320, damping: 34, mass: 0.9 } as const;
-const labelTransition = { duration: 0.18, ease: [0.4, 0, 0.2, 1] } as const;
+const fade = { duration: 0.15, ease: [0.4, 0, 0.2, 1] } as const;
 
-const labelMotion = {
-  initial: { opacity: 0, width: 0, marginLeft: 0 },
-  animate: { opacity: 1, width: 'auto', marginLeft: 0 },
-  exit: { opacity: 0, width: 0, marginLeft: 0 },
-  transition: labelTransition,
-};
+// Absolute label that fades in/out without affecting the icon's position.
+function Label({
+  collapsed,
+  children,
+  className,
+}: {
+  collapsed: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <AnimatePresence initial={false}>
+      {!collapsed && (
+        <motion.span
+          initial={{ opacity: 0, x: -4 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -4 }}
+          transition={fade}
+          className={cn(
+            'pointer-events-none absolute left-[42px] whitespace-nowrap',
+            className,
+          )}
+        >
+          {children}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export function Sidebar({
   items,
@@ -34,44 +58,44 @@ export function Sidebar({
   logoFull?: React.ReactNode;
   logoIcon?: React.ReactNode;
 }) {
-  const { sidebarCollapsed, toggleSidebar } = useUi();
+  const { sidebarCollapsed: collapsed, toggleSidebar } = useUi();
   const customLogo = Boolean(logoFull || logoIcon);
 
   return (
     <motion.aside
       initial={false}
-      animate={{ width: sidebarCollapsed ? WIDTH.collapsed : WIDTH.expanded }}
+      animate={{ width: collapsed ? WIDTH.collapsed : WIDTH.expanded }}
       transition={widthTransition}
       className="sticky top-0 hidden h-screen shrink-0 flex-col overflow-hidden border-r border-line bg-white lg:flex"
     >
       {/* Brand */}
       <div
         className={cn(
-          'flex h-16 items-center gap-3 border-b border-line px-4',
-          sidebarCollapsed && 'justify-center px-0',
+          'relative flex h-16 items-center border-b border-line',
+          collapsed ? 'justify-center px-0' : 'px-4',
         )}
       >
         {customLogo ? (
           <AnimatePresence initial={false} mode="wait">
-            {sidebarCollapsed ? (
+            {collapsed ? (
               <motion.div
                 key="logo-icon"
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={labelTransition}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm"
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={fade}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm"
               >
                 {logoIcon}
               </motion.div>
             ) : (
               <motion.div
                 key="logo-full"
-                initial={{ opacity: 0, x: -8 }}
+                initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={labelTransition}
-                className="flex items-center overflow-hidden text-ink"
+                exit={{ opacity: 0, x: -6 }}
+                transition={fade}
+                className="flex items-center text-ink"
               >
                 {logoFull}
               </motion.div>
@@ -84,18 +108,14 @@ export function Sidebar({
                 <path d="M9 9h14l-9 8h9v6H9l9-8H9z" />
               </svg>
             </div>
-            <AnimatePresence initial={false}>
-              {!sidebarCollapsed && (
-                <motion.div {...labelMotion} className="overflow-hidden leading-tight">
-                  <div className="whitespace-nowrap text-[15px] font-bold tracking-tight text-ink">
-                    Zeylo
-                  </div>
-                  <div className="whitespace-nowrap text-[11px] font-medium uppercase tracking-wider text-ink-faint">
-                    {badge}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <Label collapsed={collapsed} className="left-[64px] leading-tight">
+              <span className="block text-[15px] font-bold tracking-tight text-ink">
+                Zeylo
+              </span>
+              <span className="block text-[11px] font-medium uppercase tracking-wider text-ink-faint">
+                {badge}
+              </span>
+            </Label>
           </>
         )}
       </div>
@@ -107,11 +127,11 @@ export function Sidebar({
             key={item.to}
             to={item.to}
             end={item.end}
-            title={sidebarCollapsed ? item.label : undefined}
+            title={collapsed ? item.label : undefined}
             className={({ isActive }) =>
               cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                sidebarCollapsed && 'justify-center px-0',
+                'group relative flex h-[42px] items-center rounded-xl text-sm font-medium transition-colors',
+                collapsed ? 'justify-center px-0' : 'px-3',
                 isActive
                   ? 'bg-brand-50 text-brand-700'
                   : 'text-ink-muted hover:bg-surface-muted hover:text-ink',
@@ -123,16 +143,12 @@ export function Sidebar({
                 <item.icon
                   className={cn(
                     'h-[18px] w-[18px] shrink-0',
-                    isActive ? 'text-brand-600' : 'text-ink-faint group-hover:text-ink-soft',
+                    isActive
+                      ? 'text-brand-600'
+                      : 'text-ink-faint group-hover:text-ink-soft',
                   )}
                 />
-                <AnimatePresence initial={false}>
-                  {!sidebarCollapsed && (
-                    <motion.span {...labelMotion} className="overflow-hidden whitespace-nowrap">
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                <Label collapsed={collapsed}>{item.label}</Label>
               </>
             )}
           </NavLink>
@@ -144,28 +160,22 @@ export function Sidebar({
         <button
           onClick={toggleSidebar}
           className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink',
-            sidebarCollapsed && 'justify-center px-0',
+            'relative flex h-[42px] w-full items-center rounded-xl text-sm font-medium text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink',
+            collapsed ? 'justify-center px-0' : 'px-3',
           )}
         >
           <motion.span
-            animate={{ rotate: sidebarCollapsed ? 180 : 0 }}
-            transition={labelTransition}
+            animate={{ rotate: collapsed ? 180 : 0 }}
+            transition={fade}
             className="shrink-0"
           >
-            {sidebarCollapsed ? (
+            {collapsed ? (
               <PanelLeft className="h-[18px] w-[18px]" />
             ) : (
               <PanelLeftClose className="h-[18px] w-[18px]" />
             )}
           </motion.span>
-          <AnimatePresence initial={false}>
-            {!sidebarCollapsed && (
-              <motion.span {...labelMotion} className="overflow-hidden whitespace-nowrap">
-                Réduire
-              </motion.span>
-            )}
-          </AnimatePresence>
+          <Label collapsed={collapsed}>Réduire</Label>
         </button>
       </div>
     </motion.aside>
