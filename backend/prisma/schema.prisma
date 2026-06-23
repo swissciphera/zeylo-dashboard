@@ -457,6 +457,16 @@ model SupportAccess {
   @@index([adminId])
 }
 
+// Editable transactional email templates (Resend). One row per template key.
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. "password_reset", "email_verification"
+  subject   String
+  html      String
+  updatedAt DateTime @updatedAt @default(now())
+  createdAt DateTime @default(now())
+}
+
 // ─────────────────────────────────────────────────────────────
 // Platform settings (singleton row, id = "default")
 // ─────────────────────────────────────────────────────────────

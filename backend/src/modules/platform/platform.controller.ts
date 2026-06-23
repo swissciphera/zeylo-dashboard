@@ -21,6 +21,11 @@ import {
 import { PlatformMiscService } from './platform-misc.service';
 import { SystemHealthService } from './system-health.service';
 import { SupportAccessService, SupportAccessDto } from './support-access.service';
+import {
+  EmailTemplatesService,
+  UpdateTemplateDto,
+  TestTemplateDto,
+} from './email-templates.service';
 
 // All platform/admin endpoints live under /api/admin and require an admin token.
 @UseGuards(AdminJwtGuard)
@@ -33,6 +38,7 @@ export class PlatformController {
     private readonly misc: PlatformMiscService,
     private readonly health: SystemHealthService,
     private readonly support: SupportAccessService,
+    private readonly emailTemplates: EmailTemplatesService,
   ) {}
 
   @Get('overview')
@@ -95,5 +101,26 @@ export class PlatformController {
   @Post('settings/test-email')
   testEmail(@Body() dto: TestEmailDto) {
     return this.settings.sendTestEmail(dto.to);
+  }
+
+  // ── Email templates ─────────────────────────────────────────
+  @Get('email-templates')
+  listTemplates() {
+    return this.emailTemplates.list();
+  }
+
+  @Put('email-templates/:key')
+  updateTemplate(@Param('key') key: string, @Body() dto: UpdateTemplateDto) {
+    return this.emailTemplates.update(key, dto);
+  }
+
+  @Post('email-templates/:key/reset')
+  resetTemplate(@Param('key') key: string) {
+    return this.emailTemplates.reset(key);
+  }
+
+  @Post('email-templates/:key/test')
+  testTemplate(@Param('key') key: string, @Body() dto: TestTemplateDto) {
+    return this.emailTemplates.test(key, dto);
   }
 }

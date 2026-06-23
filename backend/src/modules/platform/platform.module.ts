@@ -6,6 +6,7 @@ import { PlatformSettingsService } from './platform-settings.service';
 import { PlatformMiscService } from './platform-misc.service';
 import { SystemHealthService } from './system-health.service';
 import { SupportAccessService } from './support-access.service';
+import { EmailTemplatesService } from './email-templates.service';
 
 @Module({
   controllers: [PlatformController],
@@ -16,6 +17,7 @@ import { SupportAccessService } from './support-access.service';
     PlatformMiscService,
     SystemHealthService,
     SupportAccessService,
+    EmailTemplatesService,
   ],
 })
 export class PlatformModule {}
