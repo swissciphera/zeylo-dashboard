@@ -6,8 +6,11 @@ export class UpdateCompanyDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() sector?: string;
   @IsOptional() @IsString() address?: string;
+  @IsOptional() @IsString() postalCode?: string;
+  @IsOptional() @IsString() city?: string;
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() website?: string;
   @IsOptional() @IsString() logoFileId?: string;
   @IsOptional() @IsString() ideNumber?: string;
   @IsOptional() @IsString() vatNumber?: string;

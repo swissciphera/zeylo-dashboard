@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Save, Gift, Copy, CheckCircle2, XCircle } from 'lucide-react';
+import { Save, Gift, Copy, CheckCircle2, XCircle, BadgeCheck } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LoadingState, Spinner } from '@/components/ui/LoadingState';
 import { Tabs } from '@/components/ui/Tabs';
@@ -56,7 +56,12 @@ function CompanyTab() {
       await clientApi.put('/app/company', {
         name: form.name,
         sector: form.sector,
+        website: form.website,
+        ideNumber: form.ideNumber,
+        vatNumber: form.vatNumber,
         address: form.address,
+        postalCode: form.postalCode,
+        city: form.city,
         email: form.email,
         phone: form.phone,
       });
@@ -69,29 +74,79 @@ function CompanyTab() {
   }
 
   return (
-    <form onSubmit={save} className="max-w-2xl card p-6 space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="label">Nom de l'entreprise</label>
-          <input className="input" value={form.name || ''} onChange={set('name')} />
+    <form onSubmit={save} className="max-w-3xl space-y-6">
+      {form.verifiedAt && (
+        <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 ring-1 ring-emerald-200">
+          <BadgeCheck className="h-4 w-4" />
+          Entreprise vérifiée au registre du commerce le{' '}
+          {formatDate(form.verifiedAt)}.
         </div>
-        <div className="sm:col-span-2">
-          <label className="label">Secteur</label>
-          <input className="input" value={form.sector || ''} onChange={set('sector')} />
-        </div>
-        <div>
-          <label className="label">Email</label>
-          <input className="input" value={form.email || ''} onChange={set('email')} />
-        </div>
-        <div>
-          <label className="label">Téléphone</label>
-          <input className="input" value={form.phone || ''} onChange={set('phone')} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="label">Adresse</label>
-          <input className="input" value={form.address || ''} onChange={set('address')} />
+      )}
+
+      {/* Identité */}
+      <div className="card p-6">
+        <h3 className="mb-4 font-semibold text-ink">Identité</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="label">Nom de l'entreprise</label>
+            <input className="input" value={form.name || ''} onChange={set('name')} />
+          </div>
+          <div>
+            <label className="label">Secteur</label>
+            <input className="input" value={form.sector || ''} onChange={set('sector')} placeholder="Nettoyage, fiduciaire…" />
+          </div>
+          <div>
+            <label className="label">Site web</label>
+            <input className="input" value={form.website || ''} onChange={set('website')} placeholder="https://exemple.ch" />
+          </div>
         </div>
       </div>
+
+      {/* Registre */}
+      <div className="card p-6">
+        <h3 className="mb-4 font-semibold text-ink">Registre du commerce</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Numéro IDE</label>
+            <input className="input font-mono" value={form.ideNumber || ''} onChange={set('ideNumber')} placeholder="CHE-123.456.789" />
+          </div>
+          <div>
+            <label className="label">Numéro TVA</label>
+            <input className="input font-mono" value={form.vatNumber || ''} onChange={set('vatNumber')} placeholder="CHE-123.456.789 TVA" />
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-ink-faint">
+          Astuce : importez ces données automatiquement via la page «&nbsp;Vérification&nbsp;».
+        </p>
+      </div>
+
+      {/* Coordonnées */}
+      <div className="card p-6">
+        <h3 className="mb-4 font-semibold text-ink">Coordonnées</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Email</label>
+            <input className="input" value={form.email || ''} onChange={set('email')} />
+          </div>
+          <div>
+            <label className="label">Téléphone</label>
+            <input className="input" value={form.phone || ''} onChange={set('phone')} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Adresse</label>
+            <input className="input" value={form.address || ''} onChange={set('address')} placeholder="Rue et numéro" />
+          </div>
+          <div>
+            <label className="label">Code postal</label>
+            <input className="input" value={form.postalCode || ''} onChange={set('postalCode')} />
+          </div>
+          <div>
+            <label className="label">Ville</label>
+            <input className="input" value={form.city || ''} onChange={set('city')} />
+          </div>
+        </div>
+      </div>
+
       {msg && <p className="text-sm text-emerald-600">{msg}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-end">

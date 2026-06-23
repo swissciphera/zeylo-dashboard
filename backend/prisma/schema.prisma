@@ -157,8 +157,11 @@ model Company {
   sector             String?
   logoFileId         String?
   address            String?
+  postalCode         String?
+  city               String?
   email              String?
   phone              String?
+  website            String?
   subscriptionStatus SubscriptionStatus @default(TRIAL)
   plan               String             @default("free")
   trialEndsAt        DateTime?
