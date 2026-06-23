@@ -414,9 +414,10 @@ function DomainTab() {
       if (!active) return;
       setAutoChecking(true);
       try {
-        const res = await clientApi.post('/app/domain/verify');
+        const res = await clientApi.post('/app/domain/verify?silent=1');
         if (!active) return;
         setChecks({ cnameOk: res.data.cnameOk, txtOk: res.data.txtOk });
+        if (res.data.verified) qc.invalidateQueries({ queryKey: ['domain-logs'] });
         if (res.data.verified) qc.setQueryData(['domain'], res.data);
       } catch {
         /* keep polling */

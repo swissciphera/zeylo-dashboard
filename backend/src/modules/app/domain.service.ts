@@ -180,17 +180,20 @@ export class DomainService {
   }
 
   // Verify CNAME + TXT records via DNS resolution.
-  async verify(companyId: string) {
+  // `log` is false for the silent auto-poll (only transitions are recorded).
+  async verify(companyId: string, opts: { log?: boolean } = {}) {
+    const log = opts.log !== false;
     const c = await this.prisma.company.findUnique({
       where: { id: companyId },
-      select: { linkDomain: true, linkDomainToken: true },
+      select: { linkDomain: true, linkDomainToken: true, linkDomainStatus: true },
     });
     if (!c?.linkDomain || !c?.linkDomainToken) {
       throw new BadRequestException("Aucun domaine à vérifier.");
     }
     const domain = c.linkDomain;
+    const wasVerified = c.linkDomainStatus === 'VERIFIED';
     const tgt = target().toLowerCase();
-    await this.event(companyId, 'info', `Vérification DNS de ${domain}…`);
+    if (log) await this.event(companyId, 'info', `Vérification DNS de ${domain}…`);
 
     let cnameOk = false;
     try {
@@ -230,19 +233,21 @@ export class DomainService {
       txtOk = false;
     }
 
-    await this.event(
-      companyId,
-      cnameOk ? 'success' : 'warn',
-      cnameOk ? 'CNAME détecté ✓' : 'CNAME pas encore propagé…',
-    );
-    await this.event(
-      companyId,
-      txtOk ? 'success' : 'warn',
-      txtOk ? 'TXT de vérification détecté ✓' : 'TXT pas encore propagé…',
-    );
+    if (log) {
+      await this.event(
+        companyId,
+        cnameOk ? 'success' : 'warn',
+        cnameOk ? 'CNAME détecté ✓' : 'CNAME pas encore propagé…',
+      );
+      await this.event(
+        companyId,
+        txtOk ? 'success' : 'warn',
+        txtOk ? 'TXT de vérification détecté ✓' : 'TXT pas encore propagé…',
+      );
+    }
 
     const verified = cnameOk && txtOk;
-    if (verified) {
+    if (verified && !wasVerified) {
       await this.prisma.company.update({
         where: { id: companyId },
         data: { linkDomainStatus: 'VERIFIED', linkDomainVerifiedAt: new Date() },

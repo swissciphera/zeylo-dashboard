@@ -26,7 +26,8 @@ export class CaddyService {
       return {
         ok: false,
         skipped: true,
-        detail: 'Provisionnement TLS auto désactivé (Caddy non configuré).',
+        detail:
+          'SSL géré par votre proxy (Cloudflare en mode Full). Émission auto à l’origine non activée (déploiement Caddy requis).',
       };
     }
     const id = `zeylo-${domain}`;

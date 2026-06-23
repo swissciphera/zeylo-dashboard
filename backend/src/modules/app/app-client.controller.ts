@@ -77,8 +77,11 @@ export class AppClientController {
   }
 
   @Post('domain/verify')
-  verifyDomain(@CurrentCompany() companyId: string) {
-    return this.domain.verify(companyId);
+  verifyDomain(
+    @CurrentCompany() companyId: string,
+    @Query('silent') silent?: string,
+  ) {
+    return this.domain.verify(companyId, { log: silent !== '1' });
   }
 
   @Post('domain/cloudflare')
