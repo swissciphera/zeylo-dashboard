@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Building2,
+  Users,
   CreditCard,
   Gift,
   ScrollText,
@@ -15,7 +15,7 @@ import { adminApi } from '@/lib/api';
 
 const NAV: NavItem[] = [
   { to: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, end: true },
-  { to: '/admin/companies', label: 'Entreprises', icon: Building2 },
+  { to: '/admin/users', label: 'Utilisateurs', icon: Users },
   { to: '/admin/billing', label: 'Facturation', icon: CreditCard },
   { to: '/admin/referrals', label: 'Parrainage', icon: Gift },
   { to: '/admin/audit', label: "Journal d'audit", icon: ScrollText },

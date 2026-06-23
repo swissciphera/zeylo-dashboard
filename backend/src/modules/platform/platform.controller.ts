@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -30,6 +31,11 @@ import {
   UpdateTemplateDto,
   TestTemplateDto,
 } from './email-templates.service';
+import {
+  UsersAdminService,
+  CreateUserDto,
+  UpdateUserDto,
+} from './users-admin.service';
 
 // All platform/admin endpoints live under /api/admin and require an admin token.
 @UseGuards(AdminJwtGuard)
@@ -43,7 +49,65 @@ export class PlatformController {
     private readonly health: SystemHealthService,
     private readonly support: SupportAccessService,
     private readonly emailTemplates: EmailTemplatesService,
+    private readonly users: UsersAdminService,
   ) {}
+
+  // ── Users (client/patron accounts) ──────────────────────────
+  @Get('users')
+  listUsers(@Query('search') search?: string) {
+    return this.users.list(search);
+  }
+
+  @Get('users/company-options')
+  companyOptions() {
+    return this.users.companyOptions();
+  }
+
+  @Post('users')
+  createUser(
+    @Body() dto: CreateUserDto,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @ClientMeta() meta: ClientMetaInfo,
+  ) {
+    return this.users.create(dto, admin.sub, meta);
+  }
+
+  @Put('users/:id')
+  updateUser(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @ClientMeta() meta: ClientMetaInfo,
+  ) {
+    return this.users.update(id, dto, admin.sub, meta);
+  }
+
+  @Post('users/:id/block')
+  blockUser(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @ClientMeta() meta: ClientMetaInfo,
+  ) {
+    return this.users.setBlocked(id, true, admin.sub, meta);
+  }
+
+  @Post('users/:id/unblock')
+  unblockUser(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @ClientMeta() meta: ClientMetaInfo,
+  ) {
+    return this.users.setBlocked(id, false, admin.sub, meta);
+  }
+
+  @Delete('users/:id')
+  deleteUser(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminPrincipal,
+    @ClientMeta() meta: ClientMetaInfo,
+  ) {
+    return this.users.remove(id, admin.sub, meta);
+  }
 
   @Get('overview')
   getOverview() {

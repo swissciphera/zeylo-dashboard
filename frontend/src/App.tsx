@@ -6,6 +6,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { AdminSetup } from '@/pages/admin/AdminSetup';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 import { AdminOverview } from '@/pages/admin/AdminOverview';
+import { AdminUsers } from '@/pages/admin/AdminUsers';
 import { AdminCompanies } from '@/pages/admin/AdminCompanies';
 import { AdminCompanyDetail } from '@/pages/admin/AdminCompanyDetail';
 import { AdminBilling } from '@/pages/admin/AdminBilling';
@@ -43,6 +44,7 @@ export default function App() {
       {/* Admin dashboard */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverview />} />
+        <Route path="users" element={<AdminUsers />} />
         <Route path="companies" element={<AdminCompanies />} />
         <Route path="companies/:id" element={<AdminCompanyDetail />} />
         <Route path="billing" element={<AdminBilling />} />
