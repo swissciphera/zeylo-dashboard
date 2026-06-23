@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SmsService } from '../../integrations/sms.service';
 import { EmailService } from '../../integrations/email.service';
 import { ProxyService } from '../../integrations/proxy.service';
+import { StripeService } from '../../integrations/stripe.service';
 
 @Injectable()
 export class SystemHealthService {
@@ -11,6 +12,7 @@ export class SystemHealthService {
     private readonly sms: SmsService,
     private readonly email: EmailService,
     private readonly proxy: ProxyService,
+    private readonly stripe: StripeService,
   ) {}
 
   async status() {
@@ -24,7 +26,24 @@ export class SystemHealthService {
       dbOk = false;
     }
 
-    const proxyTest = await this.proxy.test();
+    const [proxyTest, stripeTest] = await Promise.all([
+      this.proxy.test(),
+      this.stripe.test(),
+    ]);
+    const stripeService = {
+      key: 'stripe',
+      label: 'Stripe',
+      status: !stripeTest.configured
+        ? 'mock'
+        : stripeTest.ok
+          ? 'operational'
+          : 'down',
+      detail: !stripeTest.configured
+        ? 'Mode démo (clé non configurée)'
+        : stripeTest.ok
+          ? `Connecté · ${stripeTest.mode === 'live' ? 'Live' : 'Test'} · ${stripeTest.latencyMs} ms`
+          : `Échec : ${stripeTest.error ?? 'clé invalide'}`,
+    };
     const proxyService = {
       key: 'proxy',
       label: 'Proxy (scraping)',
@@ -63,6 +82,7 @@ export class SystemHealthService {
           ? 'Connecté'
           : 'Mode démo (clé non configurée)',
       },
+      stripeService,
       {
         key: 'storage',
         label: 'Stockage fichiers',
