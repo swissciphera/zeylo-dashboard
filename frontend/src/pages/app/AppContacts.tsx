@@ -13,7 +13,7 @@ import {
   X,
   Search,
   MapPin,
-  Minus,
+  CircleDashed,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -42,9 +42,9 @@ function EmptyCell({ title }: { title?: string }) {
   return (
     <span
       title={title ?? 'Non renseigné'}
-      className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-surface-muted text-ink-faint"
+      className="inline-flex items-center text-slate-300"
     >
-      <Minus className="h-3.5 w-3.5" />
+      <CircleDashed className="h-4 w-4" />
     </span>
   );
 }
