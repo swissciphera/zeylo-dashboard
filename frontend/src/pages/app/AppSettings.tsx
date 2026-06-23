@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Gift, Copy, CheckCircle2, XCircle, BadgeCheck, ShieldCheck, RefreshCw, Globe, Cloud, Trash2, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Save, Gift, Copy, CheckCircle2, XCircle, BadgeCheck, ShieldCheck, RefreshCw, Globe, Cloud, Trash2, Check, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LoadingState, Spinner } from '@/components/ui/LoadingState';
 import { Tabs } from '@/components/ui/Tabs';
@@ -356,6 +357,37 @@ function CopyChip({ value }: { value: string }) {
   );
 }
 
+// Animated per-record DNS status: pulsing while pending, springy check when found.
+function DnsStatus({ ok }: { ok?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+      <AnimatePresence mode="wait" initial={false}>
+        {ok ? (
+          <motion.span
+            key="ok"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 16 }}
+            className="inline-flex items-center gap-1 text-emerald-600"
+          >
+            <CheckCircle2 className="h-4 w-4" /> Détecté
+          </motion.span>
+        ) : (
+          <motion.span
+            key="wait"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="inline-flex items-center gap-1 text-amber-500"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> En attente
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+}
+
 function DomainTab() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -367,6 +399,36 @@ function DomainTab() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checks, setChecks] = useState<{ cnameOk?: boolean; txtOk?: boolean }>({});
+  const [autoChecking, setAutoChecking] = useState(false);
+  const pollingStatus = data?.status;
+
+  // Auto-verify while pending: poll the registry every 10s and update the
+  // per-record status progressively (no need to click each time).
+  useEffect(() => {
+    if (pollingStatus !== 'PENDING') return;
+    let active = true;
+    const poll = async () => {
+      if (!active) return;
+      setAutoChecking(true);
+      try {
+        const res = await clientApi.post('/app/domain/verify');
+        if (!active) return;
+        setChecks({ cnameOk: res.data.cnameOk, txtOk: res.data.txtOk });
+        if (res.data.verified) qc.setQueryData(['domain'], res.data);
+      } catch {
+        /* keep polling */
+      } finally {
+        if (active) setAutoChecking(false);
+      }
+    };
+    poll();
+    const iv = setInterval(poll, 10000);
+    return () => {
+      active = false;
+      clearInterval(iv);
+    };
+  }, [pollingStatus, qc]);
 
   if (isLoading || !data) return <LoadingState />;
 
@@ -489,18 +551,32 @@ function DomainTab() {
               Dans votre hébergeur de domaine, créez ces deux enregistrements :
             </p>
             <div className="mt-3 space-y-3">
-              {records.map((r) => (
-                <div key={r.type} className="rounded-xl border border-line p-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <span><span className="text-ink-faint">Type :</span> <b>{r.type}</b></span>
-                    <span className="break-all"><span className="text-ink-faint">Nom :</span> <span className="font-mono">{r.name}</span><CopyChip value={r.name} /></span>
-                  </div>
-                  <div className="mt-1 break-all">
-                    <span className="text-ink-faint">Valeur :</span> <span className="font-mono">{r.value}</span><CopyChip value={r.value} />
-                  </div>
-                  <p className="mt-1 text-xs text-ink-faint">{r.note}</p>
-                </div>
-              ))}
+              {records.map((r) => {
+                const ok = r.type === 'CNAME' ? checks.cnameOk : checks.txtOk;
+                return (
+                  <motion.div
+                    key={r.type}
+                    animate={{
+                      borderColor: ok ? 'rgb(167 243 208)' : 'rgb(231 235 240)',
+                      backgroundColor: ok ? 'rgb(236 253 245)' : 'rgb(255 255 255)',
+                    }}
+                    transition={{ duration: 0.4 }}
+                    className="rounded-xl border p-3 text-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span><span className="text-ink-faint">Type :</span> <b>{r.type}</b></span>
+                      <DnsStatus ok={ok} />
+                    </div>
+                    <div className="mt-1 break-all">
+                      <span className="text-ink-faint">Nom :</span> <span className="font-mono">{r.name}</span><CopyChip value={r.name} />
+                    </div>
+                    <div className="mt-1 break-all">
+                      <span className="text-ink-faint">Valeur :</span> <span className="font-mono">{r.value}</span><CopyChip value={r.value} />
+                    </div>
+                    <p className="mt-1 text-xs text-ink-faint">{r.note}</p>
+                  </motion.div>
+                );
+              })}
             </div>
 
             <div className="mt-4 rounded-xl bg-surface-subtle p-4 text-sm text-ink-soft">
@@ -514,10 +590,27 @@ function DomainTab() {
               </ol>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button className="btn-primary" onClick={() => call('/verify')} disabled={busy !== null}>
-                {busy === '/verify' ? <Spinner className="h-4 w-4 text-white" /> : <RefreshCw className="h-4 w-4" />}
-                Vérifier
+            {/* Auto-check banner */}
+            <div className="mt-4 flex items-center gap-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800 ring-1 ring-brand-200">
+              <span className="relative flex h-3 w-3">
+                <motion.span
+                  className="absolute inline-flex h-full w-full rounded-full bg-brand-400"
+                  animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }}
+                />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-500" />
+              </span>
+              <span>
+                Vérification automatique en cours… Zeylo détecte vos
+                enregistrements dès qu'ils sont propagés (aucune action
+                nécessaire).
+              </span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button className="btn-secondary" onClick={() => call('/verify')} disabled={busy !== null || autoChecking}>
+                {busy === '/verify' || autoChecking ? <Spinner className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
+                Vérifier maintenant
               </button>
               {msg && <span className="text-sm text-ink-soft">{msg}</span>}
             </div>
